@@ -1,0 +1,177 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  MERCHANT
+  SUPPLIER
+  ADMIN
+}
+
+enum PaymentMethod {
+  CASH
+  MPESA
+  TIGOPESA
+  AIRTEL_MONEY
+  HALOPESA
+  CREDIT
+}
+
+enum StockMovementType {
+  IN
+  OUT
+  ADJUSTMENT
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  OUT_FOR_DELIVERY
+  DELIVERED
+  CANCELLED
+}
+
+model User {
+  id           String    @id @default(cuid())
+  phone        String    @unique
+  pin          String
+  name         String
+  role         Role      @default(MERCHANT)
+  language     String    @default("sw") // sw = Kiswahili, en = English
+  shop         Shop?
+  supplier     Supplier?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@map("users")
+}
+
+model Shop {
+  id          String    @id @default(cuid())
+  name        String
+  location    String
+  district    String?
+  category    String    @default("general") // grocery, pharmacy, beauty, bar, general
+  userId      String    @unique
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  products    Product[]
+  sales       Sale[]
+  orders      Order[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@map("shops")
+}
+
+model Supplier {
+  id          String    @id @default(cuid())
+  name        String
+  phone       String
+  address     String?
+  userId      String?   @unique
+  user        User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  products    Product[]
+  orders      Order[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@map("suppliers")
+}
+
+model Product {
+  id             String          @id @default(cuid())
+  name           String
+  sku            String?
+  unit           String          @default("pcs") // pcs, kg, litre, box, crate
+  buyingPrice    Float
+  sellingPrice   Float
+  currentStock   Int             @default(0)
+  minimumStock   Int             @default(5) // low-stock threshold
+  isActive       Boolean         @default(true)
+  shopId         String
+  shop           Shop            @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  supplierId     String?
+  supplier       Supplier?       @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  saleItems      SaleItem[]
+  orderItems     OrderItem[]
+  stockMovements StockMovement[]
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  @@map("products")
+}
+
+model StockMovement {
+  id          String            @id @default(cuid())
+  type        StockMovementType
+  quantity    Int
+  note        String?
+  productId   String
+  product     Product           @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdAt   DateTime          @default(now())
+
+  @@map("stock_movements")
+}
+
+model Sale {
+  id              String        @id @default(cuid())
+  totalAmount     Float
+  profit          Float         @default(0)
+  paymentMethod   PaymentMethod @default(CASH)
+  paymentRef      String?       // M-Pesa transaction reference
+  customerPhone   String?
+  note            String?
+  shopId          String
+  shop            Shop          @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  items           SaleItem[]
+  createdAt       DateTime      @default(now())
+
+  @@map("sales")
+}
+
+model SaleItem {
+  id          String  @id @default(cuid())
+  quantity    Int
+  unitPrice   Float
+  buyingPrice Float
+  totalPrice  Float
+  saleId      String
+  sale        Sale    @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  productId   String
+  product     Product @relation(fields: [productId], references: [id])
+
+  @@map("sale_items")
+}
+
+model Order {
+  id          String      @id @default(cuid())
+  status      OrderStatus @default(PENDING)
+  totalAmount Float?
+  note        String?
+  shopId      String
+  shop        Shop        @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  supplierId  String
+  supplier    Supplier    @relation(fields: [supplierId], references: [id])
+  items       OrderItem[]
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@map("orders")
+}
+
+model OrderItem {
+  id          String   @id @default(cuid())
+  quantity    Int
+  unitPrice   Float?
+  productId   String
+  product     Product  @relation(fields: [productId], references: [id])
+  orderId     String
+  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@map("order_items")
+}
