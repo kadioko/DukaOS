@@ -1,0 +1,185 @@
+const prisma = require("../lib/prisma");
+
+async function getShopId(userId) {
+  const shop = await prisma.shop.findUnique({ where: { userId } });
+  if (!shop) throw Object.assign(new Error("Shop not found"), { status: 404 });
+  return shop.id;
+}
+
+async function list(req, res) {
+  const shopId = await getShopId(req.user.userId);
+  const { from, to, limit = 50, offset = 0 } = req.query;
+
+  const where = { shopId };
+  if (from || to) {
+    where.createdAt = {};
+    if (from) where.createdAt.gte = new Date(from);
+    if (to) where.createdAt.lte = new Date(to);
+  }
+
+  const [sales, total] = await Promise.all([
+    prisma.sale.findMany({
+      where,
+      include: {
+        items: {
+          include: { product: { select: { id: true, name: true, unit: true } } },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+      take: Number(limit),
+      skip: Number(offset),
+    }),
+    prisma.sale.count({ where }),
+  ]);
+
+  res.json({ sales, total });
+}
+
+async function create(req, res) {
+  const shopId = await getShopId(req.user.userId);
+  const { items, paymentMethod = "CASH", paymentRef, customerPhone, note } = req.body;
+
+  if (!items || items.length === 0) {
+    return res.status(400).json({ error: "Sale must have at least one item" });
+  }
+
+  // Validate products belong to this shop and have sufficient stock
+  const productIds = items.map((i) => i.productId);
+  const products = await prisma.product.findMany({
+    where: { id: { in: productIds }, shopId, isActive: true },
+  });
+
+  if (products.length !== productIds.length) {
+    return res.status(400).json({ error: "One or more products not found in this shop" });
+  }
+
+  const productMap = Object.fromEntries(products.map((p) => [p.id, p]));
+
+  for (const item of items) {
+    const product = productMap[item.productId];
+    if (product.currentStock < item.quantity) {
+      return res.status(400).json({
+        error: `Insufficient stock for ${product.name}. Available: ${product.currentStock} ${product.unit}`,
+      });
+    }
+  }
+
+  let totalAmount = 0;
+  let totalProfit = 0;
+  const saleItemsData = items.map((item) => {
+    const product = productMap[item.productId];
+    const unitPrice = item.unitPrice || product.sellingPrice;
+    const totalPrice = unitPrice * item.quantity;
+    const itemProfit = (unitPrice - product.buyingPrice) * item.quantity;
+    totalAmount += totalPrice;
+    totalProfit += itemProfit;
+    return {
+      quantity: item.quantity,
+      unitPrice,
+      buyingPrice: product.buyingPrice,
+      totalPrice,
+      productId: item.productId,
+    };
+  });
+
+  // Create sale and update stock in a transaction
+  const sale = await prisma.$transaction(async (tx) => {
+    const newSale = await tx.sale.create({
+      data: {
+        totalAmount,
+        profit: totalProfit,
+        paymentMethod: paymentMethod.toUpperCase(),
+        paymentRef,
+        customerPhone,
+        note,
+        shopId,
+        items: { create: saleItemsData },
+      },
+      include: {
+        items: {
+          include: { product: { select: { id: true, name: true, unit: true } } },
+        },
+      },
+    });
+
+    // Deduct stock and record movements
+    for (const item of items) {
+      await tx.product.update({
+        where: { id: item.productId },
+        data: { currentStock: { decrement: item.quantity } },
+      });
+      await tx.stockMovement.create({
+        data: {
+          type: "OUT",
+          quantity: item.quantity,
+          note: `Sale #${newSale.id.slice(-6)}`,
+          productId: item.productId,
+        },
+      });
+    }
+
+    return newSale;
+  });
+
+  res.status(201).json({ sale });
+}
+
+async function get(req, res) {
+  const shopId = await getShopId(req.user.userId);
+  const sale = await prisma.sale.findFirst({
+    where: { id: req.params.id, shopId },
+    include: {
+      items: {
+        include: { product: { select: { id: true, name: true, unit: true, sellingPrice: true } } },
+      },
+    },
+  });
+  if (!sale) return res.status(404).json({ error: "Sale not found" });
+  res.json({ sale });
+}
+
+async function summary(req, res) {
+  const shopId = await getShopId(req.user.userId);
+  const { period = "today" } = req.query;
+
+  let from;
+  const now = new Date();
+  if (period === "today") {
+    from = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  } else if (period === "week") {
+    from = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  } else if (period === "month") {
+    from = new Date(now.getFullYear(), now.getMonth(), 1);
+  }
+
+  const where = { shopId, createdAt: { gte: from } };
+  const [sales, aggregate] = await Promise.all([
+    prisma.sale.findMany({
+      where,
+      select: { id: true, totalAmount: true, profit: true, paymentMethod: true, createdAt: true },
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.sale.aggregate({
+      where,
+      _sum: { totalAmount: true, profit: true },
+      _count: { id: true },
+    }),
+  ]);
+
+  // Payment method breakdown
+  const byPayment = {};
+  for (const s of sales) {
+    byPayment[s.paymentMethod] = (byPayment[s.paymentMethod] || 0) + s.totalAmount;
+  }
+
+  res.json({
+    period,
+    totalSales: aggregate._sum.totalAmount || 0,
+    totalProfit: aggregate._sum.profit || 0,
+    salesCount: aggregate._count.id,
+    byPaymentMethod: byPayment,
+    recentSales: sales.slice(0, 5),
+  });
+}
+
+module.exports = { list, create, get, summary };

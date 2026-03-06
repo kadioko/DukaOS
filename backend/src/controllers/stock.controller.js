@@ -1,0 +1,72 @@
+const prisma = require("../lib/prisma");
+
+async function getShopId(userId) {
+  const shop = await prisma.shop.findUnique({ where: { userId } });
+  if (!shop) throw Object.assign(new Error("Shop not found"), { status: 404 });
+  return shop.id;
+}
+
+async function adjust(req, res) {
+  const shopId = await getShopId(req.user.userId);
+  const { productId, type, quantity, note } = req.body;
+
+  if (!productId || !type || !quantity) {
+    return res.status(400).json({ error: "productId, type, and quantity are required" });
+  }
+  if (!["IN", "OUT", "ADJUSTMENT"].includes(type.toUpperCase())) {
+    return res.status(400).json({ error: "type must be IN, OUT, or ADJUSTMENT" });
+  }
+
+  const product = await prisma.product.findFirst({ where: { id: productId, shopId } });
+  if (!product) return res.status(404).json({ error: "Product not found" });
+
+  const qty = Number(quantity);
+  let newStock = product.currentStock;
+
+  if (type.toUpperCase() === "IN") {
+    newStock += qty;
+  } else if (type.toUpperCase() === "OUT") {
+    if (product.currentStock < qty) {
+      return res.status(400).json({ error: "Insufficient stock" });
+    }
+    newStock -= qty;
+  } else {
+    // ADJUSTMENT: set absolute value
+    newStock = qty;
+  }
+
+  const [movement, updatedProduct] = await prisma.$transaction([
+    prisma.stockMovement.create({
+      data: {
+        type: type.toUpperCase(),
+        quantity: qty,
+        note: note || null,
+        productId,
+      },
+    }),
+    prisma.product.update({
+      where: { id: productId },
+      data: { currentStock: newStock },
+    }),
+  ]);
+
+  res.json({ product: updatedProduct, movement });
+}
+
+async function movements(req, res) {
+  const shopId = await getShopId(req.user.userId);
+  const { productId } = req.params;
+
+  const product = await prisma.product.findFirst({ where: { id: productId, shopId } });
+  if (!product) return res.status(404).json({ error: "Product not found" });
+
+  const movements = await prisma.stockMovement.findMany({
+    where: { productId },
+    orderBy: { createdAt: "desc" },
+    take: 50,
+  });
+
+  res.json({ product: { id: product.id, name: product.name }, movements });
+}
+
+module.exports = { adjust, movements };
