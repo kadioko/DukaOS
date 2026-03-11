@@ -3,9 +3,11 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, setToken } from "@/lib/api";
 import { ShoppingBag, Phone, Lock, Eye, EyeOff, ArrowRight } from "lucide-react";
+import { t, useLang, setLanguage as setAppLanguage } from "@/lib/i18n";
 
 export default function LoginPage() {
   const router = useRouter();
+  const lang = useLang();
   const [phone, setPhone] = useState("");
   const [pin, setPin] = useState("");
   const [showPin, setShowPin] = useState(false);
@@ -36,7 +38,7 @@ export default function LoginPage() {
         router.push("/dashboard");
       }
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Hitilafu. Jaribu tena.");
+      setError(err instanceof Error ? err.message : t("auth.error", lang));
     } finally {
       setLoading(false);
     }
@@ -45,7 +47,23 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-brand-700 to-brand-900 flex items-center justify-center p-4">
       <div className="w-full max-w-sm">
-        {/* Logo */}
+        <div className="flex justify-end mb-4 gap-2">
+          <button
+            type="button"
+            onClick={() => setAppLanguage("sw")}
+            className={`px-3 py-1.5 rounded-full text-xs font-medium ${lang === "sw" ? "bg-white text-brand-700" : "bg-white/15 text-white"}`}
+          >
+            {t("app.swahili", lang)}
+          </button>
+          <button
+            type="button"
+            onClick={() => setAppLanguage("en")}
+            className={`px-3 py-1.5 rounded-full text-xs font-medium ${lang === "en" ? "bg-white text-brand-700" : "bg-white/15 text-white"}`}
+          >
+            {t("app.english", lang)}
+          </button>
+        </div>
+
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-16 h-16 bg-white rounded-2xl shadow-lg mb-4">
             <ShoppingBag className="w-8 h-8 text-brand-600" />
@@ -54,13 +72,12 @@ export default function LoginPage() {
           <p className="text-brand-200 mt-1 text-sm">Merchant OS • Tanzania</p>
         </div>
 
-        {/* Card */}
         <div className="bg-white rounded-2xl shadow-xl p-6">
           <h2 className="text-xl font-semibold text-gray-800 mb-1">
-            {isRegister ? "Jisajili" : "Karibu!"}
+            {isRegister ? t("auth.register", lang) : t("auth.welcome", lang)}
           </h2>
           <p className="text-gray-500 text-sm mb-6">
-            {isRegister ? "Tengeneza akaunti yako" : "Ingia kwenye duka lako"}
+            {isRegister ? t("auth.createAccount", lang) : t("auth.enterShop", lang)}
           </p>
 
           {error && (
@@ -73,7 +90,7 @@ export default function LoginPage() {
             {isRegister && (
               <>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Jina lako</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t("auth.yourName", lang)}</label>
                   <input
                     type="text"
                     value={name}
@@ -84,7 +101,7 @@ export default function LoginPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Mimi ni</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t("auth.iAm", lang)}</label>
                   <div className="grid grid-cols-2 gap-2">
                     <button
                       type="button"
@@ -95,7 +112,7 @@ export default function LoginPage() {
                           : "bg-white text-gray-600 border-gray-300"
                       }`}
                     >
-                      Mfanyabiashara
+                      {t("app.merchant", lang)}
                     </button>
                     <button
                       type="button"
@@ -106,13 +123,13 @@ export default function LoginPage() {
                           : "bg-white text-gray-600 border-gray-300"
                       }`}
                     >
-                      Msambazaji
+                      {t("app.supplier", lang)}
                     </button>
                   </div>
                 </div>
                 {role === "MERCHANT" && (
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Jina la Duka</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t("auth.shopName", lang)}</label>
                     <input
                       type="text"
                       value={shopName}
@@ -126,7 +143,7 @@ export default function LoginPage() {
             )}
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Nambari ya Simu</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t("auth.phone", lang)}</label>
               <div className="relative">
                 <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <input
@@ -141,7 +158,7 @@ export default function LoginPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">PIN (nambari 4+)</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t("auth.pin", lang)}</label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <input
@@ -168,7 +185,7 @@ export default function LoginPage() {
               disabled={loading}
               className="w-full bg-brand-600 hover:bg-brand-700 disabled:opacity-60 text-white font-semibold py-3 rounded-lg flex items-center justify-center gap-2 transition-colors"
             >
-              {loading ? "Inaendelea..." : isRegister ? "Jisajili" : "Ingia"}
+              {loading ? t("auth.loading", lang) : isRegister ? t("auth.register", lang) : t("auth.login", lang)}
               {!loading && <ArrowRight className="w-4 h-4" />}
             </button>
           </form>
@@ -179,7 +196,7 @@ export default function LoginPage() {
               onClick={() => { setIsRegister(!isRegister); setError(""); }}
               className="text-brand-600 text-sm hover:underline min-h-0"
             >
-              {isRegister ? "Nina akaunti → Ingia" : "Huna akaunti? → Jisajili"}
+              {isRegister ? t("auth.haveAccount", lang) : t("auth.noAccount", lang)}
             </button>
           </div>
         </div>

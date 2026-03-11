@@ -20,6 +20,14 @@ DukaOS starts as **software + payments + procurement**, then layers working-capi
 
 ---
 
+## Live Production
+
+- **Frontend:** [https://dukaos-khaki.vercel.app/](https://dukaos-khaki.vercel.app/)
+- **Backend API:** [https://backend-production-a87a.up.railway.app/api](https://backend-production-a87a.up.railway.app/api)
+- **Health Check:** [https://backend-production-a87a.up.railway.app/health](https://backend-production-a87a.up.railway.app/health)
+
+---
+
 ## What DukaOS Does
 
 ### For Merchants (Wafanyabiashara)
@@ -29,13 +37,14 @@ DukaOS starts as **software + payments + procurement**, then layers working-capi
 | **Inventory tracking** | Add products, set buying/selling prices, track stock levels |
 | **Low-stock alerts** | Instant badge + dashboard alert when any product hits minimum stock |
 | **POS / Sales entry** | Record sales by product, quantity, and payment method |
-| **Profit snapshot** | Real-time profit margin per sale and daily/weekly/monthly totals |
+| **Profit snapshot** | Real-time profit margin per sale and daily/weekly/monthly/all-time totals |
+| **Business history** | Review all-time business history and monthly performance trends from the dashboard |
 | **Supplier ordering** | Create orders from suppliers in one tap |
 | **WhatsApp export** | Every order generates a ready-to-send WhatsApp message in Kiswahili |
 | **One-tap reorder** | Repeat any previous order with a single button |
 | **Delivery confirmation** | Confirm goods received and auto-update stock |
-| **Payment reconciliation** | M-Pesa, Tigo Pesa, Airtel Money, HaloPesa, Cash, Credit |
-| **Kiswahili UI** | Full Kiswahili interface with English toggle |
+| **Payment reconciliation** | Bank, M-Pesa, Tigo Pesa, Airtel Money, HaloPesa, Cash, Credit |
+| **Language switching** | Full Kiswahili interface with an in-app English/Swahili toggle |
 
 ### For Suppliers (Wasambazaji)
 
@@ -69,11 +78,21 @@ DukaOS starts as **software + payments + procurement**, then layers working-capi
 | **Backend** | Node.js · Express · Prisma ORM |
 | **Database** | PostgreSQL |
 | **Frontend** | Next.js 14 · React · TypeScript · Tailwind CSS |
-| **Auth** | JWT + phone + PIN |
+| **Auth** | JWT + phone + PIN login, with saved user language preference |
 | **Messaging** | WhatsApp deep links + WhatsApp Cloud API (optional) |
-| **Mobile Money** | Abstraction layer for M-Pesa, Tigo Pesa, Airtel Money, HaloPesa |
+| **Payments** | Cash, Bank, Credit, M-Pesa, Tigo Pesa, Airtel Money, HaloPesa |
 | **Charts** | Recharts |
 | **Containerisation** | Docker + Docker Compose |
+
+---
+
+## Verification and Authentication Status
+
+- **Current production verification flow:** phone number + PIN + JWT session
+- **Current registration flow:** merchant or supplier account creation with phone and PIN
+- **Current language preference:** persisted per user and updated through `PATCH /api/auth/language`
+- **Not yet implemented:** OTP / SMS phone verification
+- **Recommended next step:** add OTP-based phone verification before high-trust financial workflows
 
 ---
 
@@ -166,7 +185,7 @@ cp backend/.env.example backend/.env
 docker-compose up --build
 
 # In a separate terminal, run migrations and seed
-docker-compose exec backend npx prisma migrate dev --name init
+docker-compose exec backend npm run db:migrate -- --name init
 docker-compose exec backend node prisma/seed.js
 ```
 
@@ -185,7 +204,7 @@ cd backend
 cp .env.example .env
 # Edit .env: set DATABASE_URL and JWT_SECRET
 npm install
-npx prisma migrate dev --name init
+npm run db:migrate -- --name init
 node prisma/seed.js
 npm run dev         # runs on :4000
 
@@ -197,6 +216,19 @@ echo "NEXT_PUBLIC_API_URL=http://localhost:4000/api" > .env.local
 npm run dev         # runs on :3000
 ```
 
+### Production Environment Variables
+
+- **Backend required:** `DATABASE_URL`, `JWT_SECRET`, `FRONTEND_URL` or `VERCEL_FRONTEND_URL`
+- **Backend optional:** `WHATSAPP_API_URL`, `WHATSAPP_API_TOKEN`, `WHATSAPP_PHONE_ID`, `MPESA_API_URL`, `MPESA_BUSINESS_SHORT_CODE`, `MPESA_PASSKEY`, `MPESA_CONSUMER_KEY`, `MPESA_CONSUMER_SECRET`
+- **Frontend required:** `NEXT_PUBLIC_API_URL`
+
+### Production Database Workflow
+
+- **Official production command:** `npm run db:deploy`
+- **Container startup command:** `npm run start:prod`
+- **Policy:** create and commit Prisma migrations in git, then let production apply them with `prisma migrate deploy`
+- **Do not use in production:** `prisma migrate dev`, `prisma db push`
+
 ---
 
 ## Demo Accounts (after seeding)
@@ -204,6 +236,7 @@ npm run dev         # runs on :3000
 | Role | Phone | PIN | Notes |
 |---|---|---|---|
 | Merchant | +255700000002 | 1234 | Mama Amina's grocery shop in Mbagala |
+| Test Merchant | +255700000003 | 1234 | Dedicated production testing merchant account in Kinondoni |
 | Supplier | +255700000001 | 1234 | Jumla Traders Ltd, Kariakoo |
 
 ---
@@ -239,7 +272,7 @@ GET    /api/stock/:productId/movements      # Full audit trail for a product
 GET    /api/sales            # Sale history (filterable by date)
 GET    /api/sales/summary    # Aggregated totals by period (today/week/month)
 GET    /api/sales/:id        # Sale detail
-POST   /api/sales            # Record a sale (auto-decrements stock)
+POST   /api/sales            # Record a sale (auto-decrements stock) with cash, bank, credit, or mobile money
 ```
 
 ### Orders
@@ -267,7 +300,7 @@ PATCH  /api/suppliers/portal/orders/:orderId/status         # Update order statu
 
 ### Dashboard
 ```
-GET    /api/dashboard?period=today|week|month   # Full business overview
+GET    /api/dashboard?period=today|week|month|all   # Full business overview, payment mix, and all-time business history
 ```
 
 ---
@@ -301,11 +334,12 @@ The frontend provides a **"Fungua WhatsApp"** button that opens WhatsApp with th
 | Method | Swahili Label |
 |---|---|
 | Cash | Pesa Taslimu |
+| Bank | Benki |
 | M-Pesa (Vodacom) | M-Pesa |
 | Tigo Pesa | Tigo Pesa |
 | Airtel Money | Airtel Money |
 | HaloPesa (CRDB) | HaloPesa |
-| Credit / Mkopo | Mkopo |
+| Credit | Mkopo |
 
 ---
 

@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from "react";
 import AppShell from "@/components/layout/AppShell";
 import { api, formatTZS } from "@/lib/api";
 import { Plus, X, ShoppingCart, Check, Minus, Search, Clock } from "lucide-react";
+import { t, useLang } from "@/lib/i18n";
 
 interface Product {
   id: string;
@@ -29,15 +30,17 @@ interface SaleRecord {
 }
 
 const PAYMENT_METHODS = [
-  { value: "CASH", label: "Pesa Taslimu", color: "gray" },
-  { value: "MPESA", label: "M-Pesa", color: "green" },
-  { value: "TIGOPESA", label: "Tigo Pesa", color: "blue" },
-  { value: "AIRTEL_MONEY", label: "Airtel Money", color: "red" },
-  { value: "HALOPESA", label: "HaloPesa", color: "purple" },
-  { value: "CREDIT", label: "Mkopo", color: "orange" },
+  { value: "CASH", labelKey: "sales.cash", color: "gray" },
+  { value: "MPESA", labelKey: "sales.mpesa", color: "green" },
+  { value: "TIGOPESA", labelKey: "sales.tigopesa", color: "blue" },
+  { value: "AIRTEL_MONEY", labelKey: "sales.airtel", color: "red" },
+  { value: "HALOPESA", labelKey: "sales.halopesa", color: "purple" },
+  { value: "BANK", labelKey: "sales.bank", color: "indigo" },
+  { value: "CREDIT", labelKey: "sales.credit", color: "orange" },
 ];
 
 export default function SalesPage() {
+  const lang = useLang();
   const [products, setProducts] = useState<Product[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [paymentMethod, setPaymentMethod] = useState("CASH");
@@ -129,7 +132,7 @@ export default function SalesPage() {
       api.get<{ products: Product[] }>("/products")
         .then((d) => setProducts(d.products.filter((p) => p.currentStock > 0)));
     } catch (e: unknown) {
-      alert(e instanceof Error ? e.message : "Hitilafu ya mauzo");
+      alert(e instanceof Error ? e.message : t("common.error", lang));
     } finally {
       setCompleting(false);
     }
@@ -141,14 +144,14 @@ export default function SalesPage() {
         {/* Success toast */}
         {success && (
           <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-green-600 text-white px-5 py-3 rounded-xl shadow-lg flex items-center gap-2 text-sm font-medium">
-            <Check className="w-4 h-4" /> Mauzo yamehifadhiwa!
+            <Check className="w-4 h-4" /> {t("sales.completed", lang)}
           </div>
         )}
 
         <div className="flex items-center justify-between mb-5">
-          <h1 className="text-xl font-bold text-gray-900">Mauzo</h1>
+          <h1 className="text-xl font-bold text-gray-900">{t("nav.sales", lang)}</h1>
           <div className="flex gap-1 bg-gray-100 rounded-lg p-1">
-            {[{ v: "pos", label: "POS" }, { v: "history", label: "Historia" }].map(({ v, label }) => (
+            {[{ v: "pos", label: t("sales.pos", lang) }, { v: "history", label: t("sales.history", lang) }].map(({ v, label }) => (
               <button key={v} onClick={() => setView(v as "pos" | "history")}
                 className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors min-h-0 ${view === v ? "bg-white text-brand-700 shadow-sm" : "text-gray-500"}`}>
                 {label}
@@ -164,7 +167,7 @@ export default function SalesPage() {
               <div className="relative mb-3">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <input value={search} onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Tafuta bidhaa..."
+                  placeholder={t("inventory.search", lang)}
                   className="w-full border border-gray-300 rounded-lg pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
               </div>
               <div className="grid grid-cols-2 gap-2 max-h-[50vh] lg:max-h-[60vh] overflow-y-auto">
@@ -174,7 +177,7 @@ export default function SalesPage() {
                     <button key={p.id} onClick={() => addToCart(p)}
                       className={`text-left p-3 rounded-xl border transition-all ${inCart ? "border-brand-400 bg-brand-50" : "border-gray-200 bg-white hover:border-brand-300"}`}>
                       <p className="text-sm font-medium text-gray-800 leading-tight">{p.name}</p>
-                      <p className="text-xs text-gray-400 mt-0.5">{p.currentStock} {p.unit} zilizobaki</p>
+                      <p className="text-xs text-gray-400 mt-0.5">{p.currentStock} {p.unit} {t("dashboard.remaining", lang)}</p>
                       <p className="text-sm font-bold text-brand-700 mt-1">{formatTZS(p.sellingPrice)}</p>
                       {inCart && (
                         <span className="text-xs bg-brand-600 text-white px-1.5 py-0.5 rounded-full">
@@ -192,13 +195,13 @@ export default function SalesPage() {
               <div className="bg-white rounded-xl border border-gray-200 p-4">
                 <div className="flex items-center gap-2 mb-3">
                   <ShoppingCart className="w-4 h-4 text-gray-500" />
-                  <h2 className="font-semibold text-gray-800 text-sm">Kapu ({cart.length})</h2>
+                  <h2 className="font-semibold text-gray-800 text-sm">{t("sales.cart", lang)} ({cart.length})</h2>
                 </div>
 
                 {cart.length === 0 ? (
                   <div className="text-center py-8 text-gray-400">
                     <ShoppingCart className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                    <p className="text-sm">Chagua bidhaa kuanza</p>
+                    <p className="text-sm">{t("sales.chooseProduct", lang)}</p>
                   </div>
                 ) : (
                   <>
@@ -235,23 +238,22 @@ export default function SalesPage() {
 
                     <div className="border-t border-gray-100 pt-3 mb-4 space-y-1">
                       <div className="flex justify-between text-sm">
-                        <span className="text-gray-500">Jumla</span>
+                        <span className="text-gray-500">{t("sales.total", lang)}</span>
                         <span className="font-bold text-gray-900">{formatTZS(total)}</span>
                       </div>
                       <div className="flex justify-between text-sm">
-                        <span className="text-gray-500">Faida</span>
+                        <span className="text-gray-500">{t("sales.profit", lang)}</span>
                         <span className="font-bold text-green-600">{formatTZS(profit)}</span>
                       </div>
                     </div>
 
-                    {/* Payment method */}
                     <div className="mb-3">
-                      <p className="text-xs font-medium text-gray-600 mb-2">Njia ya Malipo</p>
+                      <p className="text-xs font-medium text-gray-600 mb-2">{t("sales.payment", lang)}</p>
                       <div className="grid grid-cols-3 gap-1.5">
                         {PAYMENT_METHODS.map((m) => (
                           <button key={m.value} onClick={() => setPaymentMethod(m.value)}
                             className={`py-1.5 rounded-lg text-xs font-medium border transition-colors min-h-0 ${paymentMethod === m.value ? "bg-brand-600 text-white border-brand-600" : "bg-white text-gray-600 border-gray-200"}`}>
-                            {m.label}
+                            {t(m.labelKey, lang)}
                           </button>
                         ))}
                       </div>
@@ -259,14 +261,14 @@ export default function SalesPage() {
 
                     {paymentMethod !== "CASH" && paymentMethod !== "CREDIT" && (
                       <input value={paymentRef} onChange={(e) => setPaymentRef(e.target.value)}
-                        placeholder="Nambari ya muamala (hiari)"
+                        placeholder={t("sales.paymentReference", lang)}
                         className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mb-3 focus:outline-none focus:ring-2 focus:ring-brand-500" />
                     )}
 
                     <button onClick={completeSale} disabled={completing || cart.length === 0}
                       className="w-full bg-brand-600 hover:bg-brand-700 disabled:opacity-60 text-white font-semibold py-3 rounded-xl flex items-center justify-center gap-2 transition-colors">
                       <Check className="w-4 h-4" />
-                      {completing ? "Inahifadhi..." : `Kamilisha • ${formatTZS(total)}`}
+                      {completing ? t("sales.saving", lang) : `${t("sales.complete", lang)} • ${formatTZS(total)}`}
                     </button>
                   </>
                 )}
@@ -274,14 +276,13 @@ export default function SalesPage() {
             </div>
           </div>
         ) : (
-          /* History view */
           <div>
             {historyLoading ? (
-              <div className="text-center py-16 text-gray-400">Inapakia...</div>
+              <div className="text-center py-16 text-gray-400">{t("common.loading", lang)}</div>
             ) : recentSales.length === 0 ? (
               <div className="text-center py-16 text-gray-400">
                 <Clock className="w-10 h-10 mx-auto mb-3 opacity-50" />
-                <p>Hakuna mauzo bado</p>
+                <p>{t("sales.noSales", lang)}</p>
               </div>
             ) : (
               <div className="space-y-3">
@@ -298,7 +299,7 @@ export default function SalesPage() {
                       </div>
                       <div className="text-right">
                         <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
-                          {PAYMENT_METHODS.find((m) => m.value === sale.paymentMethod)?.label || sale.paymentMethod}
+                          {t(PAYMENT_METHODS.find((m) => m.value === sale.paymentMethod)?.labelKey || "sales.cash", lang)}
                         </span>
                         <p className="text-sm font-bold text-green-600 mt-1">+{formatTZS(sale.profit)}</p>
                       </div>

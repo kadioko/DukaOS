@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -15,33 +15,41 @@ import {
   Bell,
 } from "lucide-react";
 import { clearToken, api } from "@/lib/api";
+import { t, useLang, setLanguage as setAppLanguage, type Lang } from "@/lib/i18n";
 import clsx from "clsx";
 
 interface User {
   name: string;
   role: string;
+  language?: Lang;
   shop?: { name: string };
   supplier?: { name: string };
 }
 
 const merchantNav = [
-  { href: "/dashboard", label: "Dashibodi", icon: LayoutDashboard },
-  { href: "/inventory", label: "Bidhaa", icon: Package },
-  { href: "/sales", label: "Mauzo", icon: ShoppingCart },
-  { href: "/orders", label: "Maagizo", icon: ClipboardList },
-  { href: "/suppliers", label: "Wasambazaji", icon: Truck },
-];
+  { href: "/dashboard", labelKey: "nav.dashboard", icon: LayoutDashboard },
+  { href: "/inventory", labelKey: "nav.inventory", icon: Package },
+  { href: "/sales", labelKey: "nav.sales", icon: ShoppingCart },
+  { href: "/orders", labelKey: "nav.orders", icon: ClipboardList },
+  { href: "/suppliers", labelKey: "nav.suppliers", icon: Truck },
+] as const;
 
-export default function AppShell({ children }: { children: React.ReactNode }) {
+export default function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
+  const lang = useLang();
   const [user, setUser] = useState<User | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [lowStockCount, setLowStockCount] = useState(0);
 
   useEffect(() => {
     api.get<{ user: User }>("/auth/me")
-      .then((d) => setUser(d.user))
+      .then((d) => {
+        setUser(d.user);
+        if (d.user.language === "sw" || d.user.language === "en") {
+          setAppLanguage(d.user.language);
+        }
+      })
       .catch(() => router.push("/"));
   }, [router]);
 
@@ -56,6 +64,20 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   function handleLogout() {
     clearToken();
     router.push("/");
+  }
+
+  async function handleLanguageChange(nextLanguage: Lang) {
+    const previousLanguage = user?.language;
+    setAppLanguage(nextLanguage);
+    setUser((current: User | null) => (current ? { ...current, language: nextLanguage } : current));
+    try {
+      await api.patch("/auth/language", { language: nextLanguage });
+    } catch {
+      setUser((current: User | null) => (current ? { ...current, language: previousLanguage || "sw" } : current));
+      if (previousLanguage === "sw" || previousLanguage === "en") {
+        setAppLanguage(previousLanguage);
+      }
+    }
   }
 
   const nav = merchantNav;
@@ -97,7 +119,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
         {/* Nav */}
         <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
-          {nav.map(({ href, label, icon: Icon }) => (
+          {nav.map(({ href, labelKey, icon: Icon }) => (
             <Link
               key={href}
               href={href}
@@ -110,7 +132,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               )}
             >
               <Icon className="w-4 h-4 flex-shrink-0" />
-              <span>{label}</span>
+              <span>{t(labelKey, lang)}</span>
               {href === "/inventory" && lowStockCount > 0 && (
                 <span className="ml-auto bg-red-500 text-white text-xs rounded-full px-1.5 py-0.5 min-w-[20px] text-center">
                   {lowStockCount}
@@ -120,15 +142,37 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           ))}
         </nav>
 
-        {/* User + logout */}
         <div className="p-3 border-t border-brand-700">
+          <div className="px-3 py-2 mb-2 rounded-xl bg-white/5">
+            <p className="text-[11px] uppercase tracking-wide text-brand-300 mb-2">{t("app.language", lang)}</p>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={() => handleLanguageChange("sw")}
+                className={clsx(
+                  "px-2 py-2 rounded-lg text-xs font-medium transition-colors min-h-0",
+                  lang === "sw" ? "bg-white text-brand-800" : "bg-brand-700 text-brand-100"
+                )}
+              >
+                {t("app.swahili", lang)}
+              </button>
+              <button
+                onClick={() => handleLanguageChange("en")}
+                className={clsx(
+                  "px-2 py-2 rounded-lg text-xs font-medium transition-colors min-h-0",
+                  lang === "en" ? "bg-white text-brand-800" : "bg-brand-700 text-brand-100"
+                )}
+              >
+                {t("app.english", lang)}
+              </button>
+            </div>
+          </div>
           <div className="flex items-center gap-3 px-3 py-2 mb-2">
             <div className="w-8 h-8 bg-brand-600 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0">
               {user?.name?.[0]?.toUpperCase() || "?"}
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-sm font-medium truncate">{user?.name}</p>
-              <p className="text-brand-300 text-xs">{user?.role === "MERCHANT" ? "Mfanyabiashara" : "Msambazaji"}</p>
+              <p className="text-brand-300 text-xs">{user?.role === "MERCHANT" ? t("app.merchant", lang) : t("app.supplier", lang)}</p>
             </div>
           </div>
           <button
@@ -136,7 +180,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-brand-200 hover:bg-white/10 hover:text-white text-sm transition-colors"
           >
             <LogOut className="w-4 h-4" />
-            Toka
+            {t("app.logout", lang)}
           </button>
         </div>
       </aside>
@@ -170,7 +214,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
       {/* Bottom nav for mobile */}
       <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex z-10">
-        {nav.slice(0, 5).map(({ href, label, icon: Icon }) => (
+        {nav.slice(0, 5).map(({ href, labelKey, icon: Icon }) => (
           <Link
             key={href}
             href={href}
@@ -187,7 +231,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 </span>
               )}
             </div>
-            <span className="hidden xs:block">{label}</span>
+            <span className="hidden xs:block">{t(labelKey, lang)}</span>
           </Link>
         ))}
       </nav>

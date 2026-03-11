@@ -11,6 +11,7 @@ function startOf(period) {
   if (period === "today") return new Date(now.getFullYear(), now.getMonth(), now.getDate());
   if (period === "week") return new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
   if (period === "month") return new Date(now.getFullYear(), now.getMonth(), 1);
+  if (period === "all") return null;
   return new Date(now.getFullYear(), now.getMonth(), now.getDate());
 }
 
@@ -18,19 +19,20 @@ async function overview(req, res) {
   const shopId = await getShopId(req.user.userId);
   const { period = "today" } = req.query;
   const from = startOf(period);
+  const salesWhere = from ? { shopId, createdAt: { gte: from } } : { shopId };
 
   const [salesAgg, salesCount, allProducts, pendingOrders, recentSales] = await Promise.all([
     prisma.sale.aggregate({
-      where: { shopId, createdAt: { gte: from } },
+      where: salesWhere,
       _sum: { totalAmount: true, profit: true },
     }),
-    prisma.sale.count({ where: { shopId, createdAt: { gte: from } } }),
+    prisma.sale.count({ where: salesWhere }),
     prisma.product.findMany({ where: { shopId, isActive: true } }),
     prisma.order.count({ where: { shopId, status: { in: ["PENDING", "CONFIRMED", "OUT_FOR_DELIVERY"] } } }),
     prisma.sale.findMany({
-      where: { shopId, createdAt: { gte: from } },
+      where: salesWhere,
       orderBy: { createdAt: "desc" },
-      take: 5,
+      take: 10,
       select: { id: true, totalAmount: true, profit: true, paymentMethod: true, createdAt: true },
     }),
   ]);
@@ -38,7 +40,6 @@ async function overview(req, res) {
   const lowStockProducts = allProducts.filter((p) => p.currentStock <= p.minimumStock);
   const outOfStockProducts = allProducts.filter((p) => p.currentStock === 0);
 
-  // Daily sales chart for the past 7 days
   const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
   const dailySales = await prisma.sale.findMany({
     where: { shopId, createdAt: { gte: sevenDaysAgo } },
@@ -60,10 +61,9 @@ async function overview(req, res) {
     }
   }
 
-  // Top selling products in period
   const topProducts = await prisma.saleItem.groupBy({
     by: ["productId"],
-    where: { sale: { shopId, createdAt: { gte: from } } },
+    where: from ? { sale: { shopId, createdAt: { gte: from } } } : { sale: { shopId } },
     _sum: { quantity: true, totalPrice: true },
     orderBy: { _sum: { totalPrice: "desc" } },
     take: 5,
@@ -74,6 +74,34 @@ async function overview(req, res) {
     select: { id: true, name: true, unit: true },
   });
   const topProductMap = Object.fromEntries(topProductDetails.map((p) => [p.id, p]));
+
+  const paymentBreakdownRaw = await prisma.sale.groupBy({
+    by: ["paymentMethod"],
+    where: salesWhere,
+    _sum: { totalAmount: true },
+    _count: { id: true },
+    orderBy: { _sum: { totalAmount: "desc" } },
+  });
+
+  const historySales = await prisma.sale.findMany({
+    where: { shopId },
+    select: { totalAmount: true, profit: true, createdAt: true },
+    orderBy: { createdAt: "asc" },
+  });
+
+  const historyMap = {};
+  for (const sale of historySales) {
+    const date = new Date(sale.createdAt);
+    const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+    if (!historyMap[key]) {
+      historyMap[key] = { period: key, sales: 0, profit: 0, salesCount: 0 };
+    }
+    historyMap[key].sales += sale.totalAmount;
+    historyMap[key].profit += sale.profit;
+    historyMap[key].salesCount += 1;
+  }
+
+  const firstSaleAt = historySales[0]?.createdAt || null;
 
   res.json({
     period,
@@ -86,6 +114,12 @@ async function overview(req, res) {
       lowStockCount: lowStockProducts.length,
       outOfStockCount: outOfStockProducts.length,
     },
+    allTimeSummary: {
+      totalSales: historySales.reduce((sum, sale) => sum + sale.totalAmount, 0),
+      totalProfit: historySales.reduce((sum, sale) => sum + sale.profit, 0),
+      salesCount: historySales.length,
+      firstSaleAt,
+    },
     lowStockAlerts: lowStockProducts.map((p) => ({
       id: p.id,
       name: p.name,
@@ -95,6 +129,12 @@ async function overview(req, res) {
     })),
     recentSales,
     dailyChart: Object.values(dailyMap),
+    paymentBreakdown: paymentBreakdownRaw.map((item) => ({
+      paymentMethod: item.paymentMethod,
+      totalAmount: item._sum.totalAmount || 0,
+      salesCount: item._count.id,
+    })),
+    historyTimeline: Object.values(historyMap),
     topProducts: topProducts.map((t) => ({
       product: topProductMap[t.productId],
       totalQuantity: t._sum.quantity,

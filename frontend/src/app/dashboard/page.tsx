@@ -2,12 +2,11 @@
 import { useState, useEffect } from "react";
 import AppShell from "@/components/layout/AppShell";
 import { api, formatTZS } from "@/lib/api";
+import { t, useLang } from "@/lib/i18n";
 import {
   TrendingUp,
-  TrendingDown,
   ShoppingCart,
   AlertTriangle,
-  Package,
   Clock,
   BarChart2,
 } from "lucide-react";
@@ -32,16 +31,25 @@ interface DashboardData {
     lowStockCount: number;
     outOfStockCount: number;
   };
+  allTimeSummary: {
+    totalSales: number;
+    totalProfit: number;
+    salesCount: number;
+    firstSaleAt: string | null;
+  };
   lowStockAlerts: Array<{ id: string; name: string; currentStock: number; minimumStock: number; unit: string }>;
   recentSales: Array<{ id: string; totalAmount: number; profit: number; paymentMethod: string; createdAt: string }>;
   dailyChart: Array<{ date: string; sales: number; profit: number }>;
+  paymentBreakdown: Array<{ paymentMethod: string; totalAmount: number; salesCount: number }>;
+  historyTimeline: Array<{ period: string; sales: number; profit: number; salesCount: number }>;
   topProducts: Array<{ product: { name: string; unit: string }; totalQuantity: number; totalRevenue: number }>;
 }
 
 const PERIODS = [
-  { key: "today", label: "Leo" },
-  { key: "week", label: "Wiki" },
-  { key: "month", label: "Mwezi" },
+  { key: "today", labelKey: "common.today" },
+  { key: "week", labelKey: "common.week" },
+  { key: "month", labelKey: "common.month" },
+  { key: "all", labelKey: "common.all" },
 ] as const;
 
 const PAYMENT_LABELS: Record<string, string> = {
@@ -50,12 +58,14 @@ const PAYMENT_LABELS: Record<string, string> = {
   TIGOPESA: "Tigo Pesa",
   AIRTEL_MONEY: "Airtel",
   HALOPESA: "HaloPesa",
+  BANK: "Benki",
   CREDIT: "Mkopo",
 };
 
 export default function DashboardPage() {
+  const lang = useLang();
   const [data, setData] = useState<DashboardData | null>(null);
-  const [period, setPeriod] = useState<"today" | "week" | "month">("today");
+  const [period, setPeriod] = useState<"today" | "week" | "month" | "all">("today");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -77,13 +87,24 @@ export default function DashboardPage() {
   }
 
   const s = data?.summary;
+  const allTime = data?.allTimeSummary;
+
+  function paymentLabel(paymentMethod: string) {
+    if (paymentMethod === "BANK") return t("sales.bank", lang);
+    if (paymentMethod === "CASH") return t("sales.cash", lang);
+    if (paymentMethod === "MPESA") return t("sales.mpesa", lang);
+    if (paymentMethod === "TIGOPESA") return t("sales.tigopesa", lang);
+    if (paymentMethod === "AIRTEL_MONEY") return t("sales.airtel", lang);
+    if (paymentMethod === "HALOPESA") return t("sales.halopesa", lang);
+    if (paymentMethod === "CREDIT") return t("sales.credit", lang);
+    return PAYMENT_LABELS[paymentMethod] || paymentMethod;
+  }
 
   return (
     <AppShell>
       <div className="max-w-5xl mx-auto pb-20 lg:pb-6">
-        {/* Header */}
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-xl font-bold text-gray-900">Muhtasari wa Biashara</h1>
+          <h1 className="text-xl font-bold text-gray-900">{t("dashboard.title", lang)}</h1>
           <div className="flex gap-1 bg-gray-100 rounded-lg p-1">
             {PERIODS.map((p) => (
               <button
@@ -95,48 +116,73 @@ export default function DashboardPage() {
                     : "text-gray-500 hover:text-gray-700"
                 }`}
               >
-                {p.label}
+                {t(p.labelKey, lang)}
               </button>
             ))}
           </div>
         </div>
 
-        {/* KPI Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
           <KpiCard
-            label="Mauzo"
+            label={t("dashboard.sales", lang)}
             value={formatTZS(s?.totalSales || 0)}
             icon={<ShoppingCart className="w-5 h-5 text-blue-600" />}
             color="blue"
           />
           <KpiCard
-            label="Faida"
+            label={t("dashboard.profit", lang)}
             value={formatTZS(s?.totalProfit || 0)}
             icon={<TrendingUp className="w-5 h-5 text-green-600" />}
             color="green"
-            sub={s && s.totalSales > 0 ? `${((s.totalProfit / s.totalSales) * 100).toFixed(0)}% margin` : undefined}
+            sub={s && s.totalSales > 0 ? `${((s.totalProfit / s.totalSales) * 100).toFixed(0)}% ${t("dashboard.margin", lang)}` : undefined}
           />
           <KpiCard
-            label="Idadi ya Mauzo"
+            label={t("dashboard.salesCount", lang)}
             value={String(s?.salesCount || 0)}
             icon={<BarChart2 className="w-5 h-5 text-purple-600" />}
             color="purple"
           />
           <KpiCard
-            label="Maagizo Yanayosubiri"
+            label={t("dashboard.pendingOrders", lang)}
             value={String(s?.pendingOrders || 0)}
             icon={<Clock className="w-5 h-5 text-orange-600" />}
             color="orange"
           />
         </div>
 
-        {/* Low Stock Alert */}
+        <div className="grid lg:grid-cols-4 gap-3 mb-6">
+          <KpiCard
+            label={t("dashboard.allTime", lang)}
+            value={formatTZS(allTime?.totalSales || 0)}
+            icon={<ShoppingCart className="w-5 h-5 text-sky-600" />}
+            color="blue"
+          />
+          <KpiCard
+            label={t("dashboard.allTimePerformance", lang)}
+            value={formatTZS(allTime?.totalProfit || 0)}
+            icon={<TrendingUp className="w-5 h-5 text-emerald-600" />}
+            color="green"
+          />
+          <KpiCard
+            label={t("dashboard.salesCount", lang)}
+            value={String(allTime?.salesCount || 0)}
+            icon={<BarChart2 className="w-5 h-5 text-violet-600" />}
+            color="purple"
+          />
+          <KpiCard
+            label={t("dashboard.started", lang)}
+            value={allTime?.firstSaleAt ? new Date(allTime.firstSaleAt).toLocaleDateString(lang === "sw" ? "sw-TZ" : "en-US", { month: "short", year: "numeric" }) : "-"}
+            icon={<Clock className="w-5 h-5 text-amber-600" />}
+            color="orange"
+          />
+        </div>
+
         {data && data.lowStockAlerts.length > 0 && (
           <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6">
             <div className="flex items-center gap-2 mb-3">
               <AlertTriangle className="w-4 h-4 text-amber-600" />
               <h2 className="font-semibold text-amber-800 text-sm">
-                Bidhaa Zinazokwisha ({data.lowStockAlerts.length})
+                {t("dashboard.lowStock", lang)} ({data.lowStockAlerts.length})
               </h2>
             </div>
             <div className="space-y-2">
@@ -145,22 +191,21 @@ export default function DashboardPage() {
                   <span className="text-sm text-amber-900 font-medium">{p.name}</span>
                   <div className="flex items-center gap-2">
                     <span className={`text-xs font-bold ${p.currentStock === 0 ? "text-red-600" : "text-amber-700"}`}>
-                      {p.currentStock === 0 ? "IMEKWISHA" : `${p.currentStock} ${p.unit} zilizobaki`}
+                      {p.currentStock === 0 ? t("inventory.outOfStockBadge", lang).toUpperCase() : `${p.currentStock} ${p.unit} ${t("dashboard.remaining", lang)}`}
                     </span>
                   </div>
                 </div>
               ))}
               {data.lowStockAlerts.length > 5 && (
-                <p className="text-amber-600 text-xs">+{data.lowStockAlerts.length - 5} zaidi...</p>
+                <p className="text-amber-600 text-xs">+{data.lowStockAlerts.length - 5} {t("dashboard.more", lang)}...</p>
               )}
             </div>
           </div>
         )}
 
         <div className="grid lg:grid-cols-2 gap-6">
-          {/* Sales Chart */}
           <div className="bg-white rounded-xl border border-gray-200 p-4">
-            <h2 className="font-semibold text-gray-800 mb-4 text-sm">Mauzo ya Wiki Iliyopita</h2>
+            <h2 className="font-semibold text-gray-800 mb-4 text-sm">{t("dashboard.weeklyChart", lang)}</h2>
             <ResponsiveContainer width="100%" height={200}>
               <BarChart data={data?.dailyChart || []}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
@@ -169,14 +214,14 @@ export default function DashboardPage() {
                   tick={{ fontSize: 11 }}
                   tickFormatter={(v) => {
                     const d = new Date(v);
-                    return d.toLocaleDateString("sw-TZ", { weekday: "short" });
+                    return d.toLocaleDateString(lang === "sw" ? "sw-TZ" : "en-US", { weekday: "short" });
                   }}
                 />
                 <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
                 <Tooltip
                   formatter={(value: number, name: string) => [
                     formatTZS(value),
-                    name === "sales" ? "Mauzo" : "Faida",
+                    name === "sales" ? t("dashboard.sales", lang) : t("dashboard.profit", lang),
                   ]}
                 />
                 <Bar dataKey="sales" fill="#16a34a" radius={[4, 4, 0, 0]} name="sales" />
@@ -185,11 +230,10 @@ export default function DashboardPage() {
             </ResponsiveContainer>
           </div>
 
-          {/* Top Products */}
           <div className="bg-white rounded-xl border border-gray-200 p-4">
-            <h2 className="font-semibold text-gray-800 mb-4 text-sm">Bidhaa Zinazouzwa Zaidi</h2>
+            <h2 className="font-semibold text-gray-800 mb-4 text-sm">{t("dashboard.topProducts", lang)}</h2>
             {data?.topProducts.length === 0 ? (
-              <p className="text-gray-400 text-sm text-center py-8">Hakuna data bado</p>
+              <p className="text-gray-400 text-sm text-center py-8">{t("dashboard.noData", lang)}</p>
             ) : (
               <div className="space-y-3">
                 {data?.topProducts.map((tp, i) => (
@@ -200,7 +244,7 @@ export default function DashboardPage() {
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-gray-800 truncate">{tp.product?.name}</p>
                       <p className="text-xs text-gray-500">
-                        {tp.totalQuantity} {tp.product?.unit} ziliuzwa
+                        {tp.totalQuantity} {tp.product?.unit} {t("dashboard.transactions", lang)}
                       </p>
                     </div>
                     <span className="text-sm font-semibold text-brand-700">
@@ -213,23 +257,65 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Recent Sales */}
+        <div className="grid lg:grid-cols-2 gap-6 mt-6">
+          <div className="bg-white rounded-xl border border-gray-200 p-4">
+            <h2 className="font-semibold text-gray-800 mb-4 text-sm">{t("dashboard.paymentMix", lang)}</h2>
+            {data?.paymentBreakdown.length === 0 ? (
+              <p className="text-gray-400 text-sm text-center py-8">{t("dashboard.noData", lang)}</p>
+            ) : (
+              <div className="space-y-3">
+                {data?.paymentBreakdown.map((item) => (
+                  <div key={item.paymentMethod} className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-medium text-gray-800">{paymentLabel(item.paymentMethod)}</p>
+                      <p className="text-xs text-gray-500">{item.salesCount} {t("dashboard.transactions", lang)}</p>
+                    </div>
+                    <p className="text-sm font-semibold text-brand-700">{formatTZS(item.totalAmount)}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="bg-white rounded-xl border border-gray-200 p-4">
+            <h2 className="font-semibold text-gray-800 mb-4 text-sm">{t("dashboard.businessHistory", lang)}</h2>
+            {data?.historyTimeline.length === 0 ? (
+              <p className="text-gray-400 text-sm text-center py-8">{t("dashboard.noData", lang)}</p>
+            ) : (
+              <div className="space-y-3 max-h-72 overflow-y-auto pr-1">
+                {data?.historyTimeline.slice().reverse().map((item) => (
+                  <div key={item.period} className="flex items-start justify-between border-b border-gray-100 pb-3">
+                    <div>
+                      <p className="text-sm font-medium text-gray-800">{item.period}</p>
+                      <p className="text-xs text-gray-500">{item.salesCount} {t("dashboard.transactions", lang)}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-semibold text-gray-900">{formatTZS(item.sales)}</p>
+                      <p className="text-xs text-green-600">+{formatTZS(item.profit)}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
         {data && data.recentSales.length > 0 && (
           <div className="bg-white rounded-xl border border-gray-200 p-4 mt-6">
-            <h2 className="font-semibold text-gray-800 mb-4 text-sm">Mauzo ya Hivi Karibuni</h2>
+            <h2 className="font-semibold text-gray-800 mb-4 text-sm">{t("dashboard.recentSales", lang)}</h2>
             <div className="divide-y divide-gray-100">
               {data.recentSales.map((s) => (
                 <div key={s.id} className="flex items-center justify-between py-3">
                   <div>
                     <p className="text-sm font-medium text-gray-800">{formatTZS(s.totalAmount)}</p>
                     <p className="text-xs text-gray-500">
-                      {PAYMENT_LABELS[s.paymentMethod] || s.paymentMethod} •{" "}
-                      {new Date(s.createdAt).toLocaleTimeString("sw-TZ", { hour: "2-digit", minute: "2-digit" })}
+                      {paymentLabel(s.paymentMethod)} •{" "}
+                      {new Date(s.createdAt).toLocaleTimeString(lang === "sw" ? "sw-TZ" : "en-US", { hour: "2-digit", minute: "2-digit" })}
                     </p>
                   </div>
                   <div className="text-right">
                     <p className="text-sm font-semibold text-brand-600">+{formatTZS(s.profit)}</p>
-                    <p className="text-xs text-gray-400">faida</p>
+                    <p className="text-xs text-gray-400">{t("dashboard.profit", lang).toLowerCase()}</p>
                   </div>
                 </div>
               ))}
