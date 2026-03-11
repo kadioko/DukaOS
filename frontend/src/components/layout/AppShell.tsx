@@ -143,14 +143,14 @@ export default function AppShell({ children }: { children: ReactNode }) {
         </nav>
 
         <div className="p-3 border-t border-brand-700">
-          <div className="px-3 py-2 mb-2 rounded-xl bg-white/5">
-            <p className="text-[11px] uppercase tracking-wide text-brand-300 mb-2">{t("app.language", lang)}</p>
-            <div className="grid grid-cols-2 gap-2">
+          <div className="px-3 py-3 mb-2 rounded-2xl bg-white/5 border border-white/10">
+            <p className="text-[11px] uppercase tracking-[0.2em] text-brand-300 mb-2">{t("app.language", lang)}</p>
+            <div className="grid grid-cols-2 gap-1 rounded-xl bg-brand-900/30 p-1">
               <button
                 onClick={() => handleLanguageChange("sw")}
                 className={clsx(
-                  "px-2 py-2 rounded-lg text-xs font-medium transition-colors min-h-0",
-                  lang === "sw" ? "bg-white text-brand-800" : "bg-brand-700 text-brand-100"
+                  "px-2 py-2 rounded-lg text-xs font-semibold transition-colors min-h-0",
+                  lang === "sw" ? "bg-white text-brand-800 shadow-sm" : "text-brand-100 hover:bg-white/10"
                 )}
               >
                 {t("app.swahili", lang)}
@@ -158,8 +158,8 @@ export default function AppShell({ children }: { children: ReactNode }) {
               <button
                 onClick={() => handleLanguageChange("en")}
                 className={clsx(
-                  "px-2 py-2 rounded-lg text-xs font-medium transition-colors min-h-0",
-                  lang === "en" ? "bg-white text-brand-800" : "bg-brand-700 text-brand-100"
+                  "px-2 py-2 rounded-lg text-xs font-semibold transition-colors min-h-0",
+                  lang === "en" ? "bg-white text-brand-800 shadow-sm" : "text-brand-100 hover:bg-white/10"
                 )}
               >
                 {t("app.english", lang)}

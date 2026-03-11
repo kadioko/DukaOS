@@ -47,21 +47,28 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-brand-700 to-brand-900 flex items-center justify-center p-4">
       <div className="w-full max-w-sm">
-        <div className="flex justify-end mb-4 gap-2">
-          <button
-            type="button"
-            onClick={() => setAppLanguage("sw")}
-            className={`px-3 py-1.5 rounded-full text-xs font-medium ${lang === "sw" ? "bg-white text-brand-700" : "bg-white/15 text-white"}`}
-          >
-            {t("app.swahili", lang)}
-          </button>
-          <button
-            type="button"
-            onClick={() => setAppLanguage("en")}
-            className={`px-3 py-1.5 rounded-full text-xs font-medium ${lang === "en" ? "bg-white text-brand-700" : "bg-white/15 text-white"}`}
-          >
-            {t("app.english", lang)}
-          </button>
+        <div className="flex justify-center mb-6">
+          <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-1.5 border border-white/10 shadow-lg">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-center text-brand-100 px-3 pt-1 pb-2">
+              {t("app.language", lang)}
+            </div>
+            <div className="grid grid-cols-2 gap-1">
+              <button
+                type="button"
+                onClick={() => setAppLanguage("sw")}
+                className={`px-4 py-2 rounded-xl text-xs font-semibold transition-colors ${lang === "sw" ? "bg-white text-brand-700 shadow-sm" : "text-white hover:bg-white/10"}`}
+              >
+                {t("app.swahili", lang)}
+              </button>
+              <button
+                type="button"
+                onClick={() => setAppLanguage("en")}
+                className={`px-4 py-2 rounded-xl text-xs font-semibold transition-colors ${lang === "en" ? "bg-white text-brand-700 shadow-sm" : "text-white hover:bg-white/10"}`}
+              >
+                {t("app.english", lang)}
+              </button>
+            </div>
+          </div>
         </div>
 
         <div className="text-center mb-8">

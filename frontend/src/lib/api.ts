@@ -1,4 +1,16 @@
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api";
+const PROD_API_URL = "https://backend-production-a87a.up.railway.app/api";
+
+function getBaseUrl(): string {
+  if (process.env.NEXT_PUBLIC_API_URL) {
+    return process.env.NEXT_PUBLIC_API_URL;
+  }
+
+  if (typeof window !== "undefined" && window.location.hostname !== "localhost") {
+    return PROD_API_URL;
+  }
+
+  return "http://localhost:4000/api";
+}
 
 function getToken(): string | null {
   if (typeof window === "undefined") return null;
@@ -10,13 +22,19 @@ async function request<T>(
   options: RequestInit = {}
 ): Promise<T> {
   const token = getToken();
+  const baseUrl = getBaseUrl();
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     ...(options.headers as Record<string, string>),
   };
   if (token) headers["Authorization"] = `Bearer ${token}`;
 
-  const res = await fetch(`${BASE_URL}${path}`, { ...options, headers });
+  let res: Response;
+  try {
+    res = await fetch(`${baseUrl}${path}`, { ...options, headers });
+  } catch {
+    throw new Error(`Unable to reach the DukaOS server. Confirm the API URL is correct and the backend is online.`);
+  }
 
   if (res.status === 401) {
     localStorage.removeItem("dukaos_token");
