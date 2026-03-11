@@ -55,6 +55,14 @@ DukaOS starts as **software + payments + procurement**, then layers working-capi
 | **Route view** | Group pending orders by location |
 | **Performance data** | Which merchants order most frequently |
 
+### Current End-User Experience
+
+- **Login and registration** — users sign in with phone number and PIN, and can switch the interface between Swahili and English from the auth screen or inside the app.
+- **Merchant dashboard** — merchants can review sales, profit, pending orders, low-stock alerts, payment mix, and all-time business history.
+- **Sales / POS** — merchants can record sales with cash, bank, credit, or supported mobile money methods.
+- **Supplier ordering** — merchants can create, repeat, and confirm supplier orders, then send the order details through WhatsApp.
+- **Supplier portal** — suppliers can review incoming orders and update fulfillment status.
+
 ---
 
 ## Revenue Model
@@ -93,6 +101,12 @@ DukaOS starts as **software + payments + procurement**, then layers working-capi
 - **Current language preference:** persisted per user and updated through `PATCH /api/auth/language`
 - **Not yet implemented:** OTP / SMS phone verification
 - **Recommended next step:** add OTP-based phone verification before high-trust financial workflows
+
+### Security Notes
+
+- PIN-only authentication is acceptable for early testing, but it is **not sufficient for stronger trust or payment-sensitive workflows**.
+- Before enabling higher-risk actions, add OTP verification, rate-limiting, stronger PIN policies, and account recovery controls.
+- Never commit real production secrets into git; keep `DATABASE_URL`, `JWT_SECRET`, and payment credentials in environment variables only.
 
 ---
 
@@ -216,6 +230,15 @@ echo "NEXT_PUBLIC_API_URL=http://localhost:4000/api" > .env.local
 npm run dev         # runs on :3000
 ```
 
+### Local Verification Checklist
+
+- Backend health responds at `http://localhost:4000/health`
+- Frontend loads at `http://localhost:3000`
+- Test merchant can log in
+- Dashboard `All Time` tab renders
+- Sales page shows `Bank` as a payment option
+- Language toggle persists after refresh
+
 ### Production Environment Variables
 
 - **Backend required:** `DATABASE_URL`, `JWT_SECRET`, `FRONTEND_URL` or `VERCEL_FRONTEND_URL`
@@ -228,6 +251,15 @@ npm run dev         # runs on :3000
 - **Container startup command:** `npm run start:prod`
 - **Policy:** create and commit Prisma migrations in git, then let production apply them with `prisma migrate deploy`
 - **Do not use in production:** `prisma migrate dev`, `prisma db push`
+
+### Deployment Checklist
+
+1. Push changes to `main`.
+2. Confirm the backend host has `DATABASE_URL`, `JWT_SECRET`, and frontend URL variables configured.
+3. Deploy the backend and run `npm run db:deploy`.
+4. Deploy the frontend with `NEXT_PUBLIC_API_URL` pointing to the production backend API.
+5. Run the smoke test in `TESTING.md` against the live URLs.
+6. Verify language switching, bank sales, all-time analytics, and supplier flows after release.
 
 ---
 
@@ -305,6 +337,19 @@ GET    /api/dashboard?period=today|week|month|all   # Full business overview, pa
 
 ---
 
+## Testing and QA
+
+- Use `TESTING.md` as the primary smoke-test checklist for production verification.
+- Minimum regression checks for each release:
+  - login for merchant and supplier accounts
+  - dashboard load with `today`, `month`, and `all` filters
+  - language toggle persistence
+  - bank payment sale creation
+  - supplier order visibility and status transitions
+  - backend health endpoint response
+
+---
+
 ## WhatsApp Integration
 
 Every order automatically generates a WhatsApp message in Kiswahili:
@@ -350,7 +395,7 @@ The frontend provides a **"Fungua WhatsApp"** button that opens WhatsApp with th
 - [x] Product catalog + stock tracking
 - [x] Low-stock alerts
 - [x] POS sales recording
-- [x] Profit analytics (daily/weekly/monthly)
+- [x] Profit analytics (daily/weekly/monthly/all-time)
 - [x] Supplier directory
 - [x] Supplier ordering
 - [x] WhatsApp order export
@@ -358,6 +403,9 @@ The frontend provides a **"Fungua WhatsApp"** button that opens WhatsApp with th
 - [x] Delivery confirmation + auto stock update
 - [x] Supplier portal
 - [x] Kiswahili UI
+- [x] English/Swahili language toggle
+- [x] Bank payment method support
+- [x] Payment mix and business history dashboard views
 
 ### Phase 2 — Next
 - [ ] OTP-based phone verification (Africa's Talking / Twilio)
