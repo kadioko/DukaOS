@@ -1,0 +1,9 @@
+{
+  "name": "DukaOS",
+  "short_name": "DukaOS",
+  "description": "Merchant OS for Tanzania",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#166534",
+  "theme_color": "#16a34a"
+}
