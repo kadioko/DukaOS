@@ -13,7 +13,30 @@ const stockRoutes = require("./routes/stock.routes");
 
 const app = express();
 
-app.use(cors());
+ const allowedOrigins = new Set([
+   "http://localhost:3000",
+   "http://127.0.0.1:3000",
+   "https://duka-os.vercel.app",
+   "https://dukaos-khaki.vercel.app",
+   process.env.FRONTEND_URL,
+   process.env.VERCEL_FRONTEND_URL,
+ ].filter(Boolean));
+
+ const corsOptions = {
+   origin(origin, callback) {
+     if (!origin || allowedOrigins.has(origin)) {
+       return callback(null, true);
+     }
+
+     return callback(new Error(`Origin ${origin} not allowed by CORS`));
+   },
+   methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+   allowedHeaders: ["Content-Type", "Authorization"],
+   optionsSuccessStatus: 204,
+ };
+
+ app.use(cors(corsOptions));
+ app.options("*", cors(corsOptions));
 app.use(express.json());
 app.use(morgan("dev"));
 
