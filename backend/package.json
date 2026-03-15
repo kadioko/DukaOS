@@ -5,7 +5,7 @@
   "main": "src/app.js",
   "scripts": {
     "start": "node src/app.js",
-    "start:prod": "npx prisma migrate resolve --applied 20260311_add_bank_payment_method; npx prisma migrate deploy && node src/app.js",
+    "start:prod": "npx prisma migrate deploy && node src/app.js",
     "dev": "nodemon src/app.js",
     "db:migrate": "prisma migrate dev",
     "db:seed": "node prisma/seed.js",
