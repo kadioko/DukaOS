@@ -1,4 +1,4 @@
-const PROD_API_URL = "https://backend-production-a87a.up.railway.app/api";
+const PROD_API_URL = "https://dukaos-production.up.railway.app/api";
 
 function getBaseUrl(): string {
   if (process.env.NEXT_PUBLIC_API_URL) {
