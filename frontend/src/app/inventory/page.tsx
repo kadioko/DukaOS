@@ -8,11 +8,10 @@ import {
   AlertTriangle,
   Edit2,
   Package,
-  ChevronDown,
   X,
-  Check,
   ArrowUp,
   ArrowDown,
+  CalendarClock,
 } from "lucide-react";
 
 interface Product {
@@ -25,6 +24,8 @@ interface Product {
   currentStock: number;
   minimumStock: number;
   isActive: boolean;
+  expiryDate?: string | null;
+  doesNotExpire: boolean;
   supplier?: { id: string; name: string; phone: string };
 }
 
@@ -32,6 +33,18 @@ interface Supplier {
   id: string;
   name: string;
   phone: string;
+}
+
+// Returns { label, color } describing the expiry status
+function expiryStatus(p: Product): { label: string; color: string } | null {
+  if (p.doesNotExpire) return { label: "Haiishi muda", color: "bg-gray-100 text-gray-500" };
+  if (!p.expiryDate) return null;
+  const now = new Date();
+  const exp = new Date(p.expiryDate);
+  const daysLeft = Math.ceil((exp.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+  if (daysLeft < 0) return { label: "Imekwisha muda", color: "bg-red-100 text-red-700" };
+  if (daysLeft <= 30) return { label: `Inaisha siku ${daysLeft}`, color: "bg-orange-100 text-orange-700" };
+  return { label: exp.toLocaleDateString("sw-TZ", { day: "2-digit", month: "short", year: "numeric" }), color: "bg-green-100 text-green-700" };
 }
 
 export default function InventoryPage() {
@@ -46,6 +59,7 @@ export default function InventoryPage() {
   const [form, setForm] = useState({
     name: "", sku: "", unit: "pcs", buyingPrice: "", sellingPrice: "",
     currentStock: "0", minimumStock: "5", supplierId: "",
+    expiryDate: "", doesNotExpire: false,
   });
   const [adjustForm, setAdjustForm] = useState({ type: "IN", quantity: "", note: "" });
   const [saving, setSaving] = useState(false);
@@ -69,7 +83,7 @@ export default function InventoryPage() {
 
   function openAdd() {
     setEditProduct(null);
-    setForm({ name: "", sku: "", unit: "pcs", buyingPrice: "", sellingPrice: "", currentStock: "0", minimumStock: "5", supplierId: "" });
+    setForm({ name: "", sku: "", unit: "pcs", buyingPrice: "", sellingPrice: "", currentStock: "0", minimumStock: "5", supplierId: "", expiryDate: "", doesNotExpire: false });
     setError("");
     setShowForm(true);
   }
@@ -81,6 +95,8 @@ export default function InventoryPage() {
       buyingPrice: String(p.buyingPrice), sellingPrice: String(p.sellingPrice),
       currentStock: String(p.currentStock), minimumStock: String(p.minimumStock),
       supplierId: p.supplier?.id || "",
+      expiryDate: p.expiryDate ? p.expiryDate.slice(0, 10) : "",
+      doesNotExpire: p.doesNotExpire,
     });
     setError("");
     setShowForm(true);
@@ -99,6 +115,8 @@ export default function InventoryPage() {
         buyingPrice: Number(form.buyingPrice), sellingPrice: Number(form.sellingPrice),
         currentStock: Number(form.currentStock), minimumStock: Number(form.minimumStock),
         supplierId: form.supplierId || undefined,
+        doesNotExpire: form.doesNotExpire,
+        expiryDate: form.doesNotExpire ? null : (form.expiryDate || null),
       };
       if (editProduct) {
         await api.patch(`/products/${editProduct.id}`, body);
@@ -204,11 +222,16 @@ export default function InventoryPage() {
             {products.map((p) => {
               const isLow = p.currentStock <= p.minimumStock && p.currentStock > 0;
               const isOut = p.currentStock === 0;
+              const expiry = expiryStatus(p);
+              const isExpired = expiry?.label === "Imekwisha muda";
               return (
                 <div
                   key={p.id}
                   className={`bg-white rounded-xl border p-4 ${
-                    isOut ? "border-red-200" : isLow ? "border-amber-200" : "border-gray-200"
+                    isExpired ? "border-red-300" :
+                    isOut ? "border-red-200" :
+                    isLow ? "border-amber-200" :
+                    "border-gray-200"
                   }`}
                 >
                   <div className="flex items-start justify-between gap-3">
@@ -223,6 +246,12 @@ export default function InventoryPage() {
                         {isLow && !isOut && (
                           <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">
                             Inakwisha
+                          </span>
+                        )}
+                        {expiry && (
+                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium flex items-center gap-1 ${expiry.color}`}>
+                            <CalendarClock className="w-3 h-3" />
+                            {expiry.label}
                           </span>
                         )}
                       </div>
@@ -324,6 +353,33 @@ export default function InventoryPage() {
                 {suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
               </select>
             </Field>
+
+            {/* Expiry section */}
+            <div className="border border-gray-200 rounded-lg p-3 space-y-2">
+              <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide flex items-center gap-1.5">
+                <CalendarClock className="w-3.5 h-3.5" /> Tarehe ya Kuisha Muda
+              </p>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={form.doesNotExpire}
+                  onChange={(e) => setForm({ ...form, doesNotExpire: e.target.checked, expiryDate: "" })}
+                  className="w-4 h-4 rounded border-gray-300 text-brand-600"
+                />
+                <span className="text-sm text-gray-700">Bidhaa hii haiishi muda</span>
+              </label>
+              {!form.doesNotExpire && (
+                <Field label="Tarehe ya Kuisha Muda">
+                  <input
+                    type="date"
+                    value={form.expiryDate}
+                    onChange={(e) => setForm({ ...form, expiryDate: e.target.value })}
+                    className={INPUT}
+                  />
+                </Field>
+              )}
+            </div>
+
             <div className="flex gap-2 pt-2">
               <button onClick={() => setShowForm(false)} className="flex-1 border border-gray-300 text-gray-600 py-2.5 rounded-lg text-sm font-medium">
                 Futa
