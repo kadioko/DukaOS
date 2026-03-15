@@ -27,10 +27,11 @@ const STATUS_LABEL: Record<string, string> = {
   CANCELLED: "Imefutwa",
 };
 
+// Supplier advances orders up to OUT_FOR_DELIVERY only.
+// The merchant confirms delivery (which also restocks their inventory).
 const STATUS_NEXT: Record<string, { action: string; label: string; color: string }> = {
   PENDING: { action: "CONFIRMED", label: "Thibitisha", color: "bg-blue-600" },
   CONFIRMED: { action: "OUT_FOR_DELIVERY", label: "Safirishwa", color: "bg-purple-600" },
-  OUT_FOR_DELIVERY: { action: "DELIVERED", label: "Imepokelewa", color: "bg-green-600" },
 };
 
 export default function SupplierPortal() {
@@ -198,6 +199,11 @@ export default function SupplierPortal() {
                         </button>
                       )}
 
+                      {order.status === "OUT_FOR_DELIVERY" && (
+                        <p className="text-xs text-gray-400 text-center mt-2">
+                          Inasubiri uthibitisho wa mpokeaji
+                        </p>
+                      )}
                       {order.status === "PENDING" && (
                         <button onClick={() => updateStatus(order.id, "CANCELLED")}
                           className="w-full mt-2 border border-red-200 text-red-600 py-2 rounded-lg text-sm hover:bg-red-50 flex items-center justify-center gap-2">

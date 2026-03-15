@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import AppShell from "@/components/layout/AppShell";
 import { api } from "@/lib/api";
+import { t, useLang } from "@/lib/i18n";
 import { Plus, Phone, MapPin, Package, X, Edit2, Truck } from "lucide-react";
 
 interface Supplier {
@@ -13,6 +14,7 @@ interface Supplier {
 }
 
 export default function SuppliersPage() {
+  const lang = useLang();
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -46,7 +48,7 @@ export default function SuppliersPage() {
 
   async function handleSave() {
     if (!form.name || !form.phone) {
-      setError("Jina na nambari ya simu zinahitajika");
+      setError(t("suppliers.validationError", lang));
       return;
     }
     setSaving(true);
@@ -59,31 +61,37 @@ export default function SuppliersPage() {
       setShowForm(false);
       fetchSuppliers();
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Hitilafu");
+      setError(e instanceof Error ? e.message : t("common.error", lang));
     } finally {
       setSaving(false);
     }
   }
 
+  const FIELDS = [
+    { labelKey: "suppliers.companyName", key: "name", placeholder: "Jumla Traders Ltd", type: "text" },
+    { labelKey: "suppliers.phoneNumber", key: "phone", placeholder: "+255 7XX XXX XXX", type: "tel" },
+    { labelKey: "suppliers.address", key: "address", placeholder: "Kariakoo, Dar es Salaam", type: "text" },
+  ] as const;
+
   return (
     <AppShell>
       <div className="max-w-3xl mx-auto pb-24 lg:pb-6">
         <div className="flex items-center justify-between mb-5">
-          <h1 className="text-xl font-bold text-gray-900">Wasambazaji</h1>
+          <h1 className="text-xl font-bold text-gray-900">{t("suppliers.title", lang)}</h1>
           <button onClick={openAdd}
             className="flex items-center gap-2 bg-brand-600 text-white text-sm font-medium px-4 py-2 rounded-lg">
             <Plus className="w-4 h-4" />
-            <span className="hidden sm:inline">Ongeza Msambazaji</span>
+            <span className="hidden sm:inline">{t("suppliers.addBtn", lang)}</span>
           </button>
         </div>
 
         {loading ? (
-          <div className="text-center py-16 text-gray-400">Inapakia...</div>
+          <div className="text-center py-16 text-gray-400">{t("common.loading", lang)}</div>
         ) : suppliers.length === 0 ? (
           <div className="text-center py-16">
             <Truck className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-            <p className="text-gray-500 font-medium">Hakuna wasambazaji bado</p>
-            <p className="text-gray-400 text-sm mt-1">Ongeza msambazaji wako wa kwanza</p>
+            <p className="text-gray-500 font-medium">{t("suppliers.none", lang)}</p>
+            <p className="text-gray-400 text-sm mt-1">{t("suppliers.addFirst", lang)}</p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -106,11 +114,11 @@ export default function SuppliersPage() {
                       <div className="flex items-center gap-4 mt-2">
                         <div className="flex items-center gap-1 text-xs text-gray-400">
                           <Package className="w-3 h-3" />
-                          <span>{s._count.products} bidhaa</span>
+                          <span>{s._count.products} {t("suppliers.productsCount", lang)}</span>
                         </div>
                         <div className="flex items-center gap-1 text-xs text-gray-400">
                           <Truck className="w-3 h-3" />
-                          <span>{s._count.orders} maagizo</span>
+                          <span>{s._count.orders} {t("suppliers.ordersCount", lang)}</span>
                         </div>
                       </div>
                     )}
@@ -136,29 +144,29 @@ export default function SuppliersPage() {
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/40">
           <div className="bg-white rounded-2xl w-full max-w-md">
             <div className="flex items-center justify-between p-4 border-b">
-              <h3 className="font-semibold text-gray-900">{editSupplier ? "Hariri Msambazaji" : "Msambazaji Mpya"}</h3>
+              <h3 className="font-semibold text-gray-900">
+                {editSupplier ? t("suppliers.editTitle", lang) : t("suppliers.newTitle", lang)}
+              </h3>
               <button onClick={() => setShowForm(false)} className="text-gray-400 min-h-0"><X className="w-5 h-5" /></button>
             </div>
             <div className="p-4 space-y-3">
               {error && <p className="text-red-600 text-sm bg-red-50 rounded-lg p-2">{error}</p>}
-              {[
-                { label: "Jina la Kampuni *", key: "name", placeholder: "Jumla Traders Ltd", type: "text" },
-                { label: "Nambari ya Simu *", key: "phone", placeholder: "+255 7XX XXX XXX", type: "tel" },
-                { label: "Anwani", key: "address", placeholder: "Kariakoo, Dar es Salaam", type: "text" },
-              ].map(({ label, key, placeholder, type }) => (
+              {FIELDS.map(({ labelKey, key, placeholder, type }) => (
                 <div key={key}>
-                  <label className="text-xs font-medium text-gray-600 mb-1 block">{label}</label>
-                  <input type={type} value={form[key as keyof typeof form]}
+                  <label className="text-xs font-medium text-gray-600 mb-1 block">{t(labelKey, lang)}</label>
+                  <input type={type} value={form[key]}
                     onChange={(e) => setForm({ ...form, [key]: e.target.value })}
                     placeholder={placeholder}
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
                 </div>
               ))}
               <div className="flex gap-2 pt-2">
-                <button onClick={() => setShowForm(false)} className="flex-1 border border-gray-300 text-gray-600 py-2.5 rounded-lg text-sm">Futa</button>
+                <button onClick={() => setShowForm(false)} className="flex-1 border border-gray-300 text-gray-600 py-2.5 rounded-lg text-sm">
+                  {t("common.cancel", lang)}
+                </button>
                 <button onClick={handleSave} disabled={saving}
                   className="flex-1 bg-brand-600 text-white py-2.5 rounded-lg text-sm font-medium disabled:opacity-60">
-                  {saving ? "..." : "Hifadhi"}
+                  {saving ? "..." : t("common.save", lang)}
                 </button>
               </div>
             </div>

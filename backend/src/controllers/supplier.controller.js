@@ -83,15 +83,24 @@ async function updateOrderStatus(req, res) {
   if (!supplierRecord) return res.status(404).json({ error: "Supplier profile not found" });
 
   const { status } = req.body;
-  const validStatuses = ["CONFIRMED", "OUT_FOR_DELIVERY", "DELIVERED", "CANCELLED"];
+  // Suppliers can only confirm, dispatch or cancel — not mark delivered.
+  // Delivery confirmation is done by the merchant (which also adds stock).
+  const validStatuses = ["CONFIRMED", "OUT_FOR_DELIVERY", "CANCELLED"];
   if (!validStatuses.includes(status?.toUpperCase())) {
-    return res.status(400).json({ error: "Invalid status" });
+    return res.status(400).json({ error: "Invalid status. Supplier can set: CONFIRMED, OUT_FOR_DELIVERY, CANCELLED" });
   }
 
   const order = await prisma.order.findFirst({
     where: { id: req.params.orderId, supplierId: supplierRecord.id },
   });
   if (!order) return res.status(404).json({ error: "Order not found" });
+
+  // Enforce forward-only transitions
+  const transitions = { PENDING: ["CONFIRMED", "CANCELLED"], CONFIRMED: ["OUT_FOR_DELIVERY", "CANCELLED"] };
+  const allowed = transitions[order.status] || [];
+  if (!allowed.includes(status.toUpperCase())) {
+    return res.status(400).json({ error: `Cannot move order from ${order.status} to ${status.toUpperCase()}` });
+  }
 
   const updated = await prisma.order.update({
     where: { id: order.id },

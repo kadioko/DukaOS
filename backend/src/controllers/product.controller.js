@@ -41,7 +41,7 @@ async function get(req, res) {
 
 async function create(req, res) {
   const shopId = await getShopId(req.user.userId);
-  const { name, sku, unit, buyingPrice, sellingPrice, currentStock, minimumStock, supplierId } = req.body;
+  const { name, sku, unit, buyingPrice, sellingPrice, currentStock, minimumStock, supplierId, expiryDate, doesNotExpire } = req.body;
 
   if (!name || buyingPrice == null || sellingPrice == null) {
     return res.status(400).json({ error: "name, buyingPrice, and sellingPrice are required" });
@@ -58,6 +58,8 @@ async function create(req, res) {
       minimumStock: Number(minimumStock) || 5,
       shopId,
       supplierId: supplierId || null,
+      doesNotExpire: Boolean(doesNotExpire),
+      expiryDate: doesNotExpire ? null : (expiryDate ? new Date(expiryDate) : null),
     },
     include: { supplier: { select: { id: true, name: true, phone: true } } },
   });
@@ -82,7 +84,7 @@ async function update(req, res) {
   const existing = await prisma.product.findFirst({ where: { id: req.params.id, shopId } });
   if (!existing) return res.status(404).json({ error: "Product not found" });
 
-  const { name, sku, unit, buyingPrice, sellingPrice, minimumStock, supplierId, isActive } = req.body;
+  const { name, sku, unit, buyingPrice, sellingPrice, minimumStock, supplierId, isActive, expiryDate, doesNotExpire } = req.body;
 
   const product = await prisma.product.update({
     where: { id: req.params.id },
@@ -95,6 +97,9 @@ async function update(req, res) {
       ...(minimumStock !== undefined && { minimumStock: Number(minimumStock) }),
       ...(supplierId !== undefined && { supplierId }),
       ...(isActive !== undefined && { isActive }),
+      ...(doesNotExpire !== undefined && { doesNotExpire: Boolean(doesNotExpire) }),
+      ...(doesNotExpire !== undefined && doesNotExpire ? { expiryDate: null } :
+          expiryDate !== undefined ? { expiryDate: expiryDate ? new Date(expiryDate) : null } : {}),
     },
     include: { supplier: { select: { id: true, name: true, phone: true } } },
   });

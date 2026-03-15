@@ -292,7 +292,7 @@ export default function SalesPage() {
                       <div>
                         <p className="font-semibold text-gray-900">{formatTZS(sale.totalAmount)}</p>
                         <p className="text-xs text-gray-400 mt-0.5">
-                          {new Date(sale.createdAt).toLocaleString("sw-TZ", {
+                          {new Date(sale.createdAt).toLocaleString(lang === "sw" ? "sw-TZ" : "en-US", {
                             day: "numeric", month: "short", hour: "2-digit", minute: "2-digit"
                           })}
                         </p>
