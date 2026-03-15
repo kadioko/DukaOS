@@ -22,7 +22,7 @@ DukaOS starts as **software + payments + procurement**, then layers working-capi
 
 ## Live Production
 
-- **Frontend:** [https://dukaos-khaki.vercel.app/](https://dukaos-khaki.vercel.app/)
+- **Frontend:** [https://duka-os.vercel.app/]((https://duka-os.vercel.app/))
 - **Backend API:** [https://backend-production-a87a.up.railway.app/api](https://backend-production-a87a.up.railway.app/api)
 - **Health Check:** [https://backend-production-a87a.up.railway.app/health](https://backend-production-a87a.up.railway.app/health)
 
