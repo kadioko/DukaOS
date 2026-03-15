@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from "react";
 import AppShell from "@/components/layout/AppShell";
 import { api, formatTZS } from "@/lib/api";
+import { t, useLang } from "@/lib/i18n";
 import { Plus, MessageCircle, RotateCcw, Check, X, Truck, Clock, ChevronDown, ChevronUp } from "lucide-react";
 
 interface Supplier {
@@ -37,14 +38,6 @@ interface Order {
   items: OrderItem[];
 }
 
-const STATUS_LABEL: Record<string, string> = {
-  PENDING: "Inasubiri",
-  CONFIRMED: "Imethibitishwa",
-  OUT_FOR_DELIVERY: "Inakuja",
-  DELIVERED: "Imepokelewa",
-  CANCELLED: "Imefutwa",
-};
-
 const STATUS_COLOR: Record<string, string> = {
   PENDING: "bg-yellow-100 text-yellow-700",
   CONFIRMED: "bg-blue-100 text-blue-700",
@@ -54,6 +47,7 @@ const STATUS_COLOR: Record<string, string> = {
 };
 
 export default function OrdersPage() {
+  const lang = useLang();
   const [orders, setOrders] = useState<Order[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -108,7 +102,6 @@ export default function OrdersPage() {
     setOrderItems((prev) => prev.filter((i) => i.productId !== productId));
   }
 
-  // Pre-fill suggested items based on low stock, scoped to the selected supplier
   function fillLowStock() {
     const lowItems = supplierProducts
       .filter((p) => p.currentStock <= p.minimumStock)
@@ -134,14 +127,14 @@ export default function OrdersPage() {
       setNote("");
       fetchOrders();
     } catch (e: unknown) {
-      alert(e instanceof Error ? e.message : "Hitilafu");
+      alert(e instanceof Error ? e.message : t("common.error", lang));
     } finally {
       setSaving(false);
     }
   }
 
   async function confirmDelivery(orderId: string) {
-    if (!confirm("Thibitisha kupokea bidhaa? Hifadhi itaongezwa.")) return;
+    if (!confirm(t("orders.confirmDeliveryPrompt", lang))) return;
     await api.patch(`/orders/${orderId}/confirm-delivery`, {});
     fetchOrders();
   }
@@ -161,42 +154,44 @@ export default function OrdersPage() {
 
   const filtered = statusFilter === "all" ? orders : orders.filter((o) => o.status === statusFilter);
 
+  const STATUS_FILTERS = [
+    { v: "all", labelKey: "orders.all" },
+    { v: "PENDING", labelKey: "orders.status.PENDING" },
+    { v: "CONFIRMED", labelKey: "orders.status.CONFIRMED" },
+    { v: "OUT_FOR_DELIVERY", labelKey: "orders.status.OUT_FOR_DELIVERY" },
+    { v: "DELIVERED", labelKey: "orders.status.DELIVERED" },
+  ];
+
   return (
     <AppShell>
       <div className="max-w-3xl mx-auto pb-24 lg:pb-6">
         <div className="flex items-center justify-between mb-5">
-          <h1 className="text-xl font-bold text-gray-900">Maagizo ya Bidhaa</h1>
+          <h1 className="text-xl font-bold text-gray-900">{t("orders.title", lang)}</h1>
           <button onClick={() => { setShowForm(true); setOrderItems([]); setNote(""); setSelectedSupplier(""); }}
             className="flex items-center gap-2 bg-brand-600 text-white text-sm font-medium px-4 py-2 rounded-lg">
             <Plus className="w-4 h-4" />
-            <span className="hidden sm:inline">Agizo Jipya</span>
+            <span className="hidden sm:inline">{t("orders.newOrder", lang)}</span>
           </button>
         </div>
 
         {/* Status filter */}
         <div className="flex gap-2 overflow-x-auto pb-2 mb-4">
-          {[
-            { v: "all", label: "Yote" },
-            { v: "PENDING", label: "Inasubiri" },
-            { v: "CONFIRMED", label: "Imethibitishwa" },
-            { v: "OUT_FOR_DELIVERY", label: "Inakuja" },
-            { v: "DELIVERED", label: "Imepokelewa" },
-          ].map(({ v, label }) => (
+          {STATUS_FILTERS.map(({ v, labelKey }) => (
             <button key={v} onClick={() => setStatusFilter(v)}
               className={`flex-shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors min-h-0 ${
                 statusFilter === v ? "bg-brand-600 text-white" : "bg-white border border-gray-200 text-gray-600"
               }`}>
-              {label}
+              {t(labelKey, lang)}
             </button>
           ))}
         </div>
 
         {loading ? (
-          <div className="text-center py-16 text-gray-400">Inapakia...</div>
+          <div className="text-center py-16 text-gray-400">{t("common.loading", lang)}</div>
         ) : filtered.length === 0 ? (
           <div className="text-center py-16">
             <Truck className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-            <p className="text-gray-500">Hakuna maagizo</p>
+            <p className="text-gray-500">{t("orders.none", lang)}</p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -207,12 +202,12 @@ export default function OrdersPage() {
                     <div className="flex items-center gap-2 flex-wrap">
                       <p className="font-semibold text-gray-800">{order.supplier.name}</p>
                       <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_COLOR[order.status]}`}>
-                        {STATUS_LABEL[order.status]}
+                        {t(`orders.status.${order.status}`, lang)}
                       </span>
                     </div>
                     <p className="text-xs text-gray-400 mt-0.5">
                       #{order.id.slice(-8).toUpperCase()} •{" "}
-                      {new Date(order.createdAt).toLocaleDateString("sw-TZ", { day: "numeric", month: "short" })}
+                      {new Date(order.createdAt).toLocaleDateString(lang === "sw" ? "sw-TZ" : "en-US", { day: "numeric", month: "short" })}
                     </p>
                     {order.totalAmount && (
                       <p className="text-sm font-bold text-brand-700 mt-1">{formatTZS(order.totalAmount)}</p>
@@ -244,13 +239,13 @@ export default function OrdersPage() {
                       {order.status === "DELIVERED" || order.status === "CANCELLED" ? (
                         <button onClick={() => handleReorder(order.id)}
                           className="flex items-center gap-1.5 text-xs bg-blue-50 text-blue-700 border border-blue-200 px-3 py-1.5 rounded-lg font-medium min-h-0">
-                          <RotateCcw className="w-3.5 h-3.5" /> Agiza Tena
+                          <RotateCcw className="w-3.5 h-3.5" /> {t("orders.reorder", lang)}
                         </button>
                       ) : null}
                       {(order.status === "CONFIRMED" || order.status === "OUT_FOR_DELIVERY") && (
                         <button onClick={() => confirmDelivery(order.id)}
                           className="flex items-center gap-1.5 text-xs bg-brand-50 text-brand-700 border border-brand-200 px-3 py-1.5 rounded-lg font-medium min-h-0">
-                          <Check className="w-3.5 h-3.5" /> Thibitisha Kupokea
+                          <Check className="w-3.5 h-3.5" /> {t("orders.confirmDelivery", lang)}
                         </button>
                       )}
                     </div>
@@ -267,25 +262,25 @@ export default function OrdersPage() {
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/40">
           <div className="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between p-4 border-b">
-              <h3 className="font-semibold text-gray-900">Agizo Jipya</h3>
+              <h3 className="font-semibold text-gray-900">{t("orders.newOrderTitle", lang)}</h3>
               <button onClick={() => setShowForm(false)} className="text-gray-400 min-h-0"><X className="w-5 h-5" /></button>
             </div>
             <div className="p-4 space-y-4">
               <div>
-                <label className="text-xs font-medium text-gray-600 mb-1 block">Msambazaji *</label>
+                <label className="text-xs font-medium text-gray-600 mb-1 block">{t("orders.supplierLabel", lang)}</label>
                 <select value={selectedSupplier} onChange={(e) => setSelectedSupplier(e.target.value)}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
-                  <option value="">-- Chagua msambazaji --</option>
+                  <option value="">{t("orders.selectSupplier", lang)}</option>
                   {suppliers.map((s) => <option key={s.id} value={s.id}>{s.name} ({s.phone})</option>)}
                 </select>
               </div>
 
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <label className="text-xs font-medium text-gray-600">Bidhaa *</label>
+                  <label className="text-xs font-medium text-gray-600">{t("orders.productsLabel", lang)}</label>
                   <button onClick={fillLowStock}
                     className="text-xs text-brand-600 hover:underline min-h-0 flex items-center gap-1">
-                    <Clock className="w-3 h-3" /> Jaza Zinazokwisha
+                    <Clock className="w-3 h-3" /> {t("orders.fillLowStock", lang)}
                   </button>
                 </div>
                 <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto mb-2">
@@ -295,7 +290,7 @@ export default function OrdersPage() {
                       <button key={p.id} onClick={() => addItem(p.id)}
                         className={`text-left p-2 rounded-lg border text-xs transition-all ${inOrder ? "border-brand-400 bg-brand-50" : "border-gray-200 hover:border-brand-300"}`}>
                         <p className="font-medium text-gray-800">{p.name}</p>
-                        <p className="text-gray-400">{p.currentStock} zilizobaki</p>
+                        <p className="text-gray-400">{p.currentStock} {t("orders.remaining", lang)}</p>
                       </button>
                     );
                   })}
@@ -322,17 +317,17 @@ export default function OrdersPage() {
               </div>
 
               <div>
-                <label className="text-xs font-medium text-gray-600 mb-1 block">Maelezo (hiari)</label>
+                <label className="text-xs font-medium text-gray-600 mb-1 block">{t("orders.noteLabel", lang)}</label>
                 <input value={note} onChange={(e) => setNote(e.target.value)}
-                  placeholder="Maagizo maalum..."
+                  placeholder={t("orders.notePlaceholder", lang)}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
               </div>
 
               <div className="flex gap-2">
-                <button onClick={() => setShowForm(false)} className="flex-1 border border-gray-300 text-gray-600 py-2.5 rounded-lg text-sm">Futa</button>
+                <button onClick={() => setShowForm(false)} className="flex-1 border border-gray-300 text-gray-600 py-2.5 rounded-lg text-sm">{t("common.cancel", lang)}</button>
                 <button onClick={handleCreate} disabled={saving || !selectedSupplier || orderItems.length === 0}
                   className="flex-1 bg-brand-600 text-white py-2.5 rounded-lg text-sm font-medium disabled:opacity-60">
-                  {saving ? "..." : "Tuma Agizo"}
+                  {saving ? "..." : t("orders.submit", lang)}
                 </button>
               </div>
             </div>
@@ -346,7 +341,7 @@ export default function OrdersPage() {
           <div className="bg-white rounded-2xl w-full max-w-md">
             <div className="flex items-center justify-between p-4 border-b">
               <h3 className="font-semibold text-gray-900 flex items-center gap-2">
-                <MessageCircle className="w-4 h-4 text-green-600" /> Tuma WhatsApp
+                <MessageCircle className="w-4 h-4 text-green-600" /> {t("orders.whatsappTitle", lang)}
               </h3>
               <button onClick={() => setWhatsappMsg(null)} className="text-gray-400 min-h-0"><X className="w-5 h-5" /></button>
             </div>
@@ -357,12 +352,12 @@ export default function OrdersPage() {
               <div className="flex gap-2">
                 <button onClick={() => navigator.clipboard.writeText(whatsappMsg.message)}
                   className="flex-1 border border-gray-300 text-gray-600 py-2.5 rounded-lg text-sm">
-                  Nakili Ujumbe
+                  {t("orders.copyMessage", lang)}
                 </button>
                 {whatsappMsg.whatsappUrl && (
                   <a href={whatsappMsg.whatsappUrl} target="_blank" rel="noreferrer"
                     className="flex-1 bg-green-600 hover:bg-green-700 text-white py-2.5 rounded-lg text-sm font-medium text-center flex items-center justify-center gap-2">
-                    <MessageCircle className="w-4 h-4" /> Fungua WhatsApp
+                    <MessageCircle className="w-4 h-4" /> {t("orders.openWhatsApp", lang)}
                   </a>
                 )}
               </div>

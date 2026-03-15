@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from "react";
 import AppShell from "@/components/layout/AppShell";
 import { api, formatTZS } from "@/lib/api";
+import { t, useLang } from "@/lib/i18n";
 import {
   Plus,
   Search,
@@ -35,19 +36,22 @@ interface Supplier {
   phone: string;
 }
 
-// Returns { label, color } describing the expiry status
-function expiryStatus(p: Product): { label: string; color: string } | null {
-  if (p.doesNotExpire) return { label: "Haiishi muda", color: "bg-gray-100 text-gray-500" };
+function expiryStatus(p: Product, lang: string): { label: string; color: string } | null {
+  if (p.doesNotExpire) return { label: lang === "en" ? "Does not expire" : "Haiishi muda", color: "bg-gray-100 text-gray-500" };
   if (!p.expiryDate) return null;
   const now = new Date();
   const exp = new Date(p.expiryDate);
   const daysLeft = Math.ceil((exp.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-  if (daysLeft < 0) return { label: "Imekwisha muda", color: "bg-red-100 text-red-700" };
-  if (daysLeft <= 30) return { label: `Inaisha siku ${daysLeft}`, color: "bg-orange-100 text-orange-700" };
-  return { label: exp.toLocaleDateString("sw-TZ", { day: "2-digit", month: "short", year: "numeric" }), color: "bg-green-100 text-green-700" };
+  if (daysLeft < 0) return { label: lang === "en" ? "Expired" : "Imekwisha muda", color: "bg-red-100 text-red-700" };
+  if (daysLeft <= 30) return {
+    label: lang === "en" ? `Expires in ${daysLeft} days` : `Inaisha siku ${daysLeft}`,
+    color: "bg-orange-100 text-orange-700",
+  };
+  return { label: exp.toLocaleDateString(lang === "sw" ? "sw-TZ" : "en-US", { day: "2-digit", month: "short", year: "numeric" }), color: "bg-green-100 text-green-700" };
 }
 
 export default function InventoryPage() {
+  const lang = useLang();
   const [products, setProducts] = useState<Product[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [search, setSearch] = useState("");
@@ -105,7 +109,7 @@ export default function InventoryPage() {
   async function handleSave() {
     setError("");
     if (!form.name || !form.buyingPrice || !form.sellingPrice) {
-      setError("Jaza sehemu zote zinazohitajika");
+      setError(t("inventory.fieldRequired", lang));
       return;
     }
     setSaving(true);
@@ -126,7 +130,7 @@ export default function InventoryPage() {
       setShowForm(false);
       fetchProducts();
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Hitilafu");
+      setError(e instanceof Error ? e.message : t("common.error", lang));
     } finally {
       setSaving(false);
     }
@@ -145,7 +149,7 @@ export default function InventoryPage() {
       setAdjustProduct(null);
       fetchProducts();
     } catch (e: unknown) {
-      alert(e instanceof Error ? e.message : "Hitilafu");
+      alert(e instanceof Error ? e.message : t("common.error", lang));
     } finally {
       setSaving(false);
     }
@@ -159,13 +163,13 @@ export default function InventoryPage() {
       <div className="max-w-5xl mx-auto pb-24 lg:pb-6">
         {/* Header */}
         <div className="flex items-center justify-between mb-5">
-          <h1 className="text-xl font-bold text-gray-900">Hifadhi ya Bidhaa</h1>
+          <h1 className="text-xl font-bold text-gray-900">{t("inventory.title", lang)}</h1>
           <button
             onClick={openAdd}
             className="flex items-center gap-2 bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
           >
             <Plus className="w-4 h-4" />
-            <span className="hidden sm:inline">Ongeza Bidhaa</span>
+            <span className="hidden sm:inline">{t("inventory.addProduct", lang)}</span>
           </button>
         </div>
 
@@ -177,7 +181,7 @@ export default function InventoryPage() {
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Tafuta bidhaa..."
+              placeholder={t("inventory.search", lang)}
               className="w-full border border-gray-300 rounded-lg pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
             />
           </div>
@@ -190,16 +194,16 @@ export default function InventoryPage() {
             }`}
           >
             <AlertTriangle className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Zinazokwisha</span>
+            <span className="hidden sm:inline">{t("inventory.lowStockOnly", lang)}</span>
           </button>
         </div>
 
         {/* Summary stats */}
         <div className="grid grid-cols-3 gap-2 mb-4">
           {[
-            { label: "Bidhaa Zote", value: products.length },
-            { label: "Zinazokwisha", value: products.filter((p) => p.currentStock <= p.minimumStock && p.currentStock > 0).length, color: "text-amber-600" },
-            { label: "Zimekwisha", value: products.filter((p) => p.currentStock === 0).length, color: "text-red-600" },
+            { label: t("inventory.allProducts", lang), value: products.length },
+            { label: t("inventory.lowStockCount", lang), value: products.filter((p) => p.currentStock <= p.minimumStock && p.currentStock > 0).length, color: "text-amber-600" },
+            { label: t("inventory.outOfStockCount", lang), value: products.filter((p) => p.currentStock === 0).length, color: "text-red-600" },
           ].map((stat) => (
             <div key={stat.label} className="bg-white rounded-xl border border-gray-200 p-3 text-center">
               <p className={`text-lg font-bold ${stat.color || "text-gray-900"}`}>{stat.value}</p>
@@ -210,20 +214,20 @@ export default function InventoryPage() {
 
         {/* Product list */}
         {loading ? (
-          <div className="text-center py-16 text-gray-400">Inapakia...</div>
+          <div className="text-center py-16 text-gray-400">{t("common.loading", lang)}</div>
         ) : products.length === 0 ? (
           <div className="text-center py-16">
             <Package className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-            <p className="text-gray-500 font-medium">Hakuna bidhaa</p>
-            <p className="text-gray-400 text-sm mt-1">Bonyeza &quot;Ongeza Bidhaa&quot; kuanza</p>
+            <p className="text-gray-500 font-medium">{t("inventory.noProducts", lang)}</p>
+            <p className="text-gray-400 text-sm mt-1">{t("inventory.noProductsHint", lang)}</p>
           </div>
         ) : (
           <div className="space-y-2">
             {products.map((p) => {
               const isLow = p.currentStock <= p.minimumStock && p.currentStock > 0;
               const isOut = p.currentStock === 0;
-              const expiry = expiryStatus(p);
-              const isExpired = expiry?.label === "Imekwisha muda";
+              const expiry = expiryStatus(p, lang);
+              const isExpired = expiry?.color === "bg-red-100 text-red-700";
               return (
                 <div
                   key={p.id}
@@ -240,12 +244,12 @@ export default function InventoryPage() {
                         <p className="font-semibold text-gray-900 text-sm">{p.name}</p>
                         {isOut && (
                           <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-medium">
-                            Imekwisha
+                            {t("inventory.outOfStockBadge", lang)}
                           </span>
                         )}
                         {isLow && !isOut && (
                           <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">
-                            Inakwisha
+                            {t("inventory.lowStockBadge", lang)}
                           </span>
                         )}
                         {expiry && (
@@ -260,21 +264,21 @@ export default function InventoryPage() {
                       )}
                       <div className="flex items-center gap-4 mt-2 flex-wrap">
                         <div>
-                          <p className="text-xs text-gray-400">Hifadhi</p>
+                          <p className="text-xs text-gray-400">{t("inventory.stock", lang)}</p>
                           <p className={`text-sm font-bold ${isOut ? "text-red-600" : isLow ? "text-amber-600" : "text-gray-800"}`}>
                             {p.currentStock} {p.unit}
                           </p>
                         </div>
                         <div>
-                          <p className="text-xs text-gray-400">Bei ya Kununua</p>
+                          <p className="text-xs text-gray-400">{t("inventory.buyingPrice", lang)}</p>
                           <p className="text-sm font-medium text-gray-700">{formatTZS(p.buyingPrice)}</p>
                         </div>
                         <div>
-                          <p className="text-xs text-gray-400">Bei ya Kuuza</p>
+                          <p className="text-xs text-gray-400">{t("inventory.sellingPrice", lang)}</p>
                           <p className="text-sm font-medium text-brand-700">{formatTZS(p.sellingPrice)}</p>
                         </div>
                         <div>
-                          <p className="text-xs text-gray-400">Faida</p>
+                          <p className="text-xs text-gray-400">{t("inventory.marginLabel", lang)}</p>
                           <p className="text-sm font-medium text-green-600">{margin(p)}%</p>
                         </div>
                       </div>
@@ -286,7 +290,7 @@ export default function InventoryPage() {
                           setAdjustForm({ type: "IN", quantity: "", note: "" });
                         }}
                         className="p-2 text-gray-500 hover:text-brand-600 hover:bg-brand-50 rounded-lg transition-colors min-h-0"
-                        title="Badilisha Hifadhi"
+                        title={t("inventory.adjustStock", lang)}
                       >
                         <ArrowUp className="w-4 h-4" />
                       </button>
@@ -307,19 +311,19 @@ export default function InventoryPage() {
 
       {/* Add/Edit Product Modal */}
       {showForm && (
-        <Modal title={editProduct ? "Hariri Bidhaa" : "Ongeza Bidhaa Mpya"} onClose={() => setShowForm(false)}>
+        <Modal title={editProduct ? t("inventory.editTitle", lang) : t("inventory.addTitle", lang)} onClose={() => setShowForm(false)}>
           <div className="space-y-3">
             {error && <p className="text-red-600 text-sm bg-red-50 rounded-lg p-2">{error}</p>}
-            <Field label="Jina la Bidhaa *">
+            <Field label={t("inventory.nameLabel", lang)}>
               <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
-                className={INPUT} placeholder="Unga wa Sembe (2kg)" />
+                className={INPUT} placeholder={t("inventory.namePlaceholder", lang)} />
             </Field>
             <div className="grid grid-cols-2 gap-3">
-              <Field label="SKU / Nambari">
+              <Field label={t("inventory.skuLabel", lang)}>
                 <input value={form.sku} onChange={(e) => setForm({ ...form, sku: e.target.value })}
                   className={INPUT} placeholder="UNG001" />
               </Field>
-              <Field label="Kipimo">
+              <Field label={t("inventory.unitLabel", lang)}>
                 <select value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} className={INPUT}>
                   {["pcs", "kg", "litre", "box", "crate", "bag", "pkt", "bar"].map((u) => (
                     <option key={u} value={u}>{u}</option>
@@ -328,28 +332,28 @@ export default function InventoryPage() {
               </Field>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <Field label="Bei ya Kununua (TZS) *">
+              <Field label={t("inventory.buyingPriceLabel", lang)}>
                 <input type="number" value={form.buyingPrice} onChange={(e) => setForm({ ...form, buyingPrice: e.target.value })}
                   className={INPUT} placeholder="2800" />
               </Field>
-              <Field label="Bei ya Kuuza (TZS) *">
+              <Field label={t("inventory.sellingPriceLabel", lang)}>
                 <input type="number" value={form.sellingPrice} onChange={(e) => setForm({ ...form, sellingPrice: e.target.value })}
                   className={INPUT} placeholder="3200" />
               </Field>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <Field label="Hifadhi ya Sasa">
+              <Field label={t("inventory.currentStockLabel", lang)}>
                 <input type="number" value={form.currentStock} onChange={(e) => setForm({ ...form, currentStock: e.target.value })}
                   className={INPUT} placeholder="0" />
               </Field>
-              <Field label="Kiwango cha Chini">
+              <Field label={t("inventory.minimumStockLabel", lang)}>
                 <input type="number" value={form.minimumStock} onChange={(e) => setForm({ ...form, minimumStock: e.target.value })}
                   className={INPUT} placeholder="5" />
               </Field>
             </div>
-            <Field label="Msambazaji">
+            <Field label={t("inventory.supplierLabel", lang)}>
               <select value={form.supplierId} onChange={(e) => setForm({ ...form, supplierId: e.target.value })} className={INPUT}>
-                <option value="">-- Chagua msambazaji --</option>
+                <option value="">{t("inventory.selectSupplier", lang)}</option>
                 {suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
               </select>
             </Field>
@@ -357,7 +361,7 @@ export default function InventoryPage() {
             {/* Expiry section */}
             <div className="border border-gray-200 rounded-lg p-3 space-y-2">
               <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide flex items-center gap-1.5">
-                <CalendarClock className="w-3.5 h-3.5" /> Tarehe ya Kuisha Muda
+                <CalendarClock className="w-3.5 h-3.5" /> {t("inventory.expirySection", lang)}
               </p>
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
@@ -366,10 +370,10 @@ export default function InventoryPage() {
                   onChange={(e) => setForm({ ...form, doesNotExpire: e.target.checked, expiryDate: "" })}
                   className="w-4 h-4 rounded border-gray-300 text-brand-600"
                 />
-                <span className="text-sm text-gray-700">Bidhaa hii haiishi muda</span>
+                <span className="text-sm text-gray-700">{t("inventory.doesNotExpire", lang)}</span>
               </label>
               {!form.doesNotExpire && (
-                <Field label="Tarehe ya Kuisha Muda">
+                <Field label={t("inventory.expiryDateLabel", lang)}>
                   <input
                     type="date"
                     value={form.expiryDate}
@@ -382,10 +386,10 @@ export default function InventoryPage() {
 
             <div className="flex gap-2 pt-2">
               <button onClick={() => setShowForm(false)} className="flex-1 border border-gray-300 text-gray-600 py-2.5 rounded-lg text-sm font-medium">
-                Futa
+                {t("common.cancel", lang)}
               </button>
               <button onClick={handleSave} disabled={saving} className="flex-1 bg-brand-600 text-white py-2.5 rounded-lg text-sm font-medium disabled:opacity-60">
-                {saving ? "Inahifadhi..." : "Hifadhi"}
+                {saving ? t("inventory.saving", lang) : t("common.save", lang)}
               </button>
             </div>
           </div>
@@ -394,17 +398,17 @@ export default function InventoryPage() {
 
       {/* Adjust Stock Modal */}
       {adjustProduct && (
-        <Modal title={`Badilisha Hifadhi: ${adjustProduct.name}`} onClose={() => setAdjustProduct(null)}>
+        <Modal title={`${t("inventory.adjustStock", lang)}: ${adjustProduct.name}`} onClose={() => setAdjustProduct(null)}>
           <div className="space-y-3">
             <p className="text-sm text-gray-500">
-              Hifadhi ya sasa: <strong>{adjustProduct.currentStock} {adjustProduct.unit}</strong>
+              {t("inventory.currentStockOf", lang)} <strong>{adjustProduct.currentStock} {adjustProduct.unit}</strong>
             </p>
             <div className="grid grid-cols-3 gap-2">
               {[
-                { v: "IN", label: "Ongeza", icon: <ArrowUp className="w-4 h-4" />, color: "green" },
-                { v: "OUT", label: "Punguza", icon: <ArrowDown className="w-4 h-4" />, color: "red" },
-                { v: "ADJUSTMENT", label: "Rekebisha", icon: <Edit2 className="w-4 h-4" />, color: "blue" },
-              ].map(({ v, label, icon, color }) => (
+                { v: "IN", labelKey: "inventory.adjustIn", icon: <ArrowUp className="w-4 h-4" />, color: "green" },
+                { v: "OUT", labelKey: "inventory.adjustOut", icon: <ArrowDown className="w-4 h-4" />, color: "red" },
+                { v: "ADJUSTMENT", labelKey: "inventory.adjustSet", icon: <Edit2 className="w-4 h-4" />, color: "blue" },
+              ].map(({ v, labelKey, icon, color }) => (
                 <button
                   key={v}
                   onClick={() => setAdjustForm({ ...adjustForm, type: v })}
@@ -414,25 +418,27 @@ export default function InventoryPage() {
                       : "border-gray-200 text-gray-500"
                   }`}
                 >
-                  {icon}{label}
+                  {icon}{t(labelKey, lang)}
                 </button>
               ))}
             </div>
-            <Field label={adjustForm.type === "ADJUSTMENT" ? "Idadi Mpya" : "Idadi"}>
+            <Field label={adjustForm.type === "ADJUSTMENT" ? t("inventory.adjustNewQty", lang) : t("inventory.adjustQty", lang)}>
               <input type="number" value={adjustForm.quantity}
                 onChange={(e) => setAdjustForm({ ...adjustForm, quantity: e.target.value })}
                 className={INPUT} placeholder="0" min="0" />
             </Field>
-            <Field label="Maelezo (hiari)">
+            <Field label={t("inventory.adjustNote", lang)}>
               <input value={adjustForm.note}
                 onChange={(e) => setAdjustForm({ ...adjustForm, note: e.target.value })}
-                className={INPUT} placeholder="Sababu ya mabadiliko..." />
+                className={INPUT} placeholder={t("inventory.adjustNotePlaceholder", lang)} />
             </Field>
             <div className="flex gap-2 pt-2">
-              <button onClick={() => setAdjustProduct(null)} className="flex-1 border border-gray-300 text-gray-600 py-2.5 rounded-lg text-sm font-medium">Futa</button>
+              <button onClick={() => setAdjustProduct(null)} className="flex-1 border border-gray-300 text-gray-600 py-2.5 rounded-lg text-sm font-medium">
+                {t("common.cancel", lang)}
+              </button>
               <button onClick={handleAdjust} disabled={saving || !adjustForm.quantity}
                 className="flex-1 bg-brand-600 text-white py-2.5 rounded-lg text-sm font-medium disabled:opacity-60">
-                {saving ? "..." : "Hifadhi"}
+                {saving ? "..." : t("common.save", lang)}
               </button>
             </div>
           </div>
