@@ -108,9 +108,9 @@ export default function OrdersPage() {
     setOrderItems((prev) => prev.filter((i) => i.productId !== productId));
   }
 
-  // Pre-fill suggested items based on low stock
+  // Pre-fill suggested items based on low stock, scoped to the selected supplier
   function fillLowStock() {
-    const lowItems = products
+    const lowItems = supplierProducts
       .filter((p) => p.currentStock <= p.minimumStock)
       .map((p) => ({
         productId: p.id,

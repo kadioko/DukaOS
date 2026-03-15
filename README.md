@@ -23,8 +23,8 @@ DukaOS starts as **software + payments + procurement**, then layers working-capi
 ## Live Production
 
 - **Frontend:** [https://duka-os.vercel.app/]((https://duka-os.vercel.app/))
-- **Backend API:** [https://backend-production-a87a.up.railway.app/api](https://backend-production-a87a.up.railway.app/api)
-- **Health Check:** [https://backend-production-a87a.up.railway.app/health](https://backend-production-a87a.up.railway.app/health)
+- **Backend API:** [https://dukaos-production.up.railway.app/api](https://dukaos-production.up.railway.app/api)
+- **Health Check:** [https://dukaos-production.up.railway.app/health](https://dukaos-production.up.railway.app/health)
 
 ---
 
@@ -42,7 +42,7 @@ DukaOS starts as **software + payments + procurement**, then layers working-capi
 | **Supplier ordering** | Create orders from suppliers in one tap |
 | **WhatsApp export** | Every order generates a ready-to-send WhatsApp message in Kiswahili |
 | **One-tap reorder** | Repeat any previous order with a single button |
-| **Delivery confirmation** | Confirm goods received and auto-update stock |
+| **Delivery confirmation** | Confirm goods received and auto-restock inventory (merchant only) |
 | **Payment reconciliation** | Bank, M-Pesa, Tigo Pesa, Airtel Money, HaloPesa, Cash, Credit |
 | **Language switching** | Full Kiswahili interface with an in-app English/Swahili toggle |
 
@@ -51,7 +51,7 @@ DukaOS starts as **software + payments + procurement**, then layers working-capi
 | Feature | Description |
 |---|---|
 | **Order dashboard** | See all incoming orders from merchants |
-| **Status management** | Confirm → Dispatch → Mark delivered |
+| **Status management** | Confirm → Dispatch (supplier advances to OUT_FOR_DELIVERY only) |
 | **Route view** | Group pending orders by location |
 | **Performance data** | Which merchants order most frequently |
 
@@ -61,7 +61,7 @@ DukaOS starts as **software + payments + procurement**, then layers working-capi
 - **Merchant dashboard** — merchants can review sales, profit, pending orders, low-stock alerts, payment mix, and all-time business history.
 - **Sales / POS** — merchants can record sales with cash, bank, credit, or supported mobile money methods.
 - **Supplier ordering** — merchants can create, repeat, and confirm supplier orders, then send the order details through WhatsApp.
-- **Supplier portal** — suppliers can review incoming orders and update fulfillment status.
+- **Supplier portal** — suppliers can review incoming orders and advance status (PENDING → CONFIRMED → OUT_FOR_DELIVERY). The merchant confirms delivery, which triggers automatic stock replenishment.
 
 ---
 
