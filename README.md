@@ -243,7 +243,7 @@ npm run dev         # runs on :3000
 
 - **Backend required:** `DATABASE_URL`, `JWT_SECRET`, `FRONTEND_URL` or `VERCEL_FRONTEND_URL`
 - **Backend optional:** `WHATSAPP_API_URL`, `WHATSAPP_API_TOKEN`, `WHATSAPP_PHONE_ID`, `MPESA_API_URL`, `MPESA_BUSINESS_SHORT_CODE`, `MPESA_PASSKEY`, `MPESA_CONSUMER_KEY`, `MPESA_CONSUMER_SECRET`
-- **Frontend required:** `NEXT_PUBLIC_API_URL`
+- **Frontend required:** `NEXT_PUBLIC_API_URL=https://backend-production-a87a.up.railway.app/api`
 
 ### Production Database Workflow
 
@@ -256,10 +256,12 @@ npm run dev         # runs on :3000
 
 1. Push changes to `main`.
 2. Confirm the backend host has `DATABASE_URL`, `JWT_SECRET`, and frontend URL variables configured.
-3. Deploy the backend and run `npm run db:deploy`.
-4. Deploy the frontend with `NEXT_PUBLIC_API_URL` pointing to the production backend API.
-5. Run the smoke test in `TESTING.md` against the live URLs.
-6. Verify language switching, bank sales, all-time analytics, and supplier flows after release.
+3. Deploy the backend from the `backend` root directory using the Dockerfile startup path (`npm run start:prod` inside the container).
+4. If needed, run `npm run db:deploy` manually before release.
+5. Deploy the frontend with `NEXT_PUBLIC_API_URL` pointing to `https://backend-production-a87a.up.railway.app/api`.
+6. Verify Railway healthcheck path is `/health`.
+7. Run the smoke test in `TESTING.md` against the live URLs.
+8. Verify language switching, bank sales, all-time analytics, and supplier flows after release.
 
 ---
 

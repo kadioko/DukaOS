@@ -1,15 +1,19 @@
-const PROD_API_URL = "https://dukaos-production.up.railway.app/api";
+const PROD_API_URL = "https://backend-production-a87a.up.railway.app/api";
+
+function normalizeBaseUrl(url: string): string {
+  return url.trim().replace(/\/$/, "");
+}
 
 function getBaseUrl(): string {
   if (process.env.NEXT_PUBLIC_API_URL) {
-    return process.env.NEXT_PUBLIC_API_URL;
+    return normalizeBaseUrl(process.env.NEXT_PUBLIC_API_URL);
   }
 
   if (typeof window !== "undefined" && window.location.hostname !== "localhost") {
-    return PROD_API_URL;
+    return normalizeBaseUrl(PROD_API_URL);
   }
 
-  return "http://localhost:4000/api";
+  return normalizeBaseUrl("http://localhost:4000/api");
 }
 
 function getToken(): string | null {
@@ -33,7 +37,7 @@ async function request<T>(
   try {
     res = await fetch(`${baseUrl}${path}`, { ...options, headers });
   } catch {
-    throw new Error(`Unable to reach the DukaOS server. Confirm the API URL is correct and the backend is online.`);
+    throw new Error("Unable to reach the DukaOS server. Confirm the API URL is correct and the backend is online.");
   }
 
   if (res.status === 401) {
@@ -42,8 +46,24 @@ async function request<T>(
     throw new Error("Session expired");
   }
 
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || "Request failed");
+  const contentType = res.headers.get("content-type") || "";
+  const isJson = contentType.includes("application/json");
+  const payload = isJson ? await res.json() : await res.text();
+
+  if (!res.ok) {
+    const message =
+      typeof payload === "string"
+        ? payload || `Request failed with status ${res.status}`
+        : payload?.error || `Request failed with status ${res.status}`;
+
+    throw new Error(message);
+  }
+
+  if (!isJson) {
+    throw new Error("The DukaOS server returned an unexpected response format.");
+  }
+
+  const data = payload;
   return data as T;
 }
 

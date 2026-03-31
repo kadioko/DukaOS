@@ -2,7 +2,7 @@
 
 ## Live URLs
 
-- Frontend: `https://dukaos-khaki.vercel.app/`
+- Frontend: `https://duka-os.vercel.app/`
 - Backend API: `https://backend-production-a87a.up.railway.app/api`
 - Health: `https://backend-production-a87a.up.railway.app/health`
 
@@ -37,7 +37,8 @@
 
 - Frontend production build should pass with `npx next build`
 - Backend Prisma migration to apply: `20260311_add_bank_payment_method`
-- Production backend deploy command remains: `npm run db:deploy` followed by `npm run start:prod`
+- Production backend deploy command remains: `npm run start:prod`
+- Optional manual migration command: `npm run db:deploy`
 - Local Prisma validation requires `DATABASE_URL` to be set in the backend environment
 
 ## API Check

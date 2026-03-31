@@ -13,31 +13,43 @@ const stockRoutes = require("./routes/stock.routes");
 
 const app = express();
 
- const allowedOrigins = new Set([
-   "http://localhost:3000",
-   "http://127.0.0.1:3000",
-   "https://duka-os.vercel.app",
-   "https://dukaos-khaki.vercel.app",
-   process.env.FRONTEND_URL,
-   process.env.VERCEL_FRONTEND_URL,
- ].filter(Boolean));
+function normalizeOrigin(origin) {
+  return typeof origin === "string" ? origin.trim().replace(/\/$/, "") : "";
+}
 
- const corsOptions = {
-   origin(origin, callback) {
-     if (!origin || allowedOrigins.has(origin)) {
-       return callback(null, true);
-     }
+const allowedOrigins = new Set(
+  [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "https://duka-os.vercel.app",
+    "https://dukaos-khaki.vercel.app",
+    process.env.FRONTEND_URL,
+    process.env.VERCEL_FRONTEND_URL,
+  ]
+    .map(normalizeOrigin)
+    .filter(Boolean)
+);
 
-     return callback(new Error(`Origin ${origin} not allowed by CORS`));
-   },
-   methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
-   allowedHeaders: ["Content-Type", "Authorization"],
-   optionsSuccessStatus: 204,
- };
+const corsOptions = {
+  origin(origin, callback) {
+    const normalizedOrigin = normalizeOrigin(origin);
 
- app.use(cors(corsOptions));
- app.options("*", cors(corsOptions));
-app.use(express.json());
+    if (!normalizedOrigin || allowedOrigins.has(normalizedOrigin)) {
+      return callback(null, true);
+    }
+
+    const error = new Error(`Origin ${normalizedOrigin} not allowed by CORS`);
+    error.status = 403;
+    return callback(error);
+  },
+  methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  optionsSuccessStatus: 204,
+};
+
+app.use(cors(corsOptions));
+app.options("*", cors(corsOptions));
+app.use(express.json({ limit: "1mb" }));
 app.use(morgan("dev"));
 
 app.get("/health", (req, res) => res.json({ status: "ok", service: "DukaOS API" }));
@@ -51,9 +63,13 @@ app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/stock", stockRoutes);
 
 app.use((err, req, res, next) => {
-  console.error(err.stack);
+  const status = Number(err.status) || 500;
+  const message = status >= 500 ? "Internal server error" : err.message;
+
+  console.error(err.stack || err.message || err);
+
   res.status(err.status || 500).json({
-    error: err.message || "Internal server error",
+    error: message || "Internal server error",
   });
 });
 
