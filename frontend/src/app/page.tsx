@@ -1,9 +1,21 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { api, setToken } from "@/lib/api";
+import { api, getFriendlyErrorMessage, setToken } from "@/lib/api";
 import { ShoppingBag, Phone, Lock, Eye, EyeOff, ArrowRight } from "lucide-react";
 import { t, useLang, setLanguage as setAppLanguage } from "@/lib/i18n";
+
+function normalizePhone(value: string): string {
+  return value.replace(/[\s()-]/g, "").trim();
+}
+
+function isValidPhone(value: string): boolean {
+  return /^\+?[1-9]\d{8,14}$/.test(normalizePhone(value));
+}
+
+function isValidPin(value: string): boolean {
+  return /^\d{4,8}$/.test(value.trim());
+}
 
 export default function LoginPage() {
   const router = useRouter();
@@ -21,15 +33,36 @@ export default function LoginPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
+
+    const normalizedPhone = normalizePhone(phone);
+    const normalizedPin = pin.trim();
+    const normalizedName = name.trim();
+    const normalizedShopName = shopName.trim();
+
+    if (!isValidPhone(normalizedPhone)) {
+      setError(t("auth.error.invalidPhone", lang));
+      return;
+    }
+
+    if (!isValidPin(normalizedPin)) {
+      setError(t("auth.error.invalidPin", lang));
+      return;
+    }
+
+    if (isRegister && !normalizedName) {
+      setError(t("auth.error.nameRequired", lang));
+      return;
+    }
+
     setLoading(true);
 
     try {
       const endpoint = isRegister ? "/auth/register" : "/auth/login";
       const body = isRegister
-        ? { phone, pin, name, role, shopName }
-        : { phone, pin };
+        ? { phone: normalizedPhone, pin: normalizedPin, name: normalizedName, role, shopName: normalizedShopName }
+        : { phone: normalizedPhone, pin: normalizedPin };
 
-      const data = await api.post<{ token: string; user: { role: string } }>(endpoint, body);
+      const data = await api.post<{ token: string; user: { role: string } }>(endpoint, body, lang);
       setToken(data.token);
 
       if (data.user.role === "SUPPLIER") {
@@ -38,7 +71,7 @@ export default function LoginPage() {
         router.push("/dashboard");
       }
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : t("auth.error", lang));
+      setError(err instanceof Error ? getFriendlyErrorMessage(err.message, lang) : t("auth.error", lang));
     } finally {
       setLoading(false);
     }
@@ -158,6 +191,7 @@ export default function LoginPage() {
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   placeholder="+255 7XX XXX XXX"
+                  autoComplete="tel"
                   className="w-full border border-gray-300 rounded-lg pl-10 pr-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
                   required
                 />
@@ -174,6 +208,8 @@ export default function LoginPage() {
                   onChange={(e) => setPin(e.target.value)}
                   placeholder="••••"
                   maxLength={8}
+                  inputMode="numeric"
+                  autoComplete={isRegister ? "new-password" : "current-password"}
                   className="w-full border border-gray-300 rounded-lg pl-10 pr-10 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
                   required
                 />

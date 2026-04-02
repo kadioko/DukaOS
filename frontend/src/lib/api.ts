@@ -1,4 +1,6 @@
-const PROD_API_URL = "https://backend-production-a87a.up.railway.app/api";
+import { t, type Lang } from "@/lib/i18n";
+
+const PROD_API_URL = "https://dukaos-production.up.railway.app/api";
 
 function normalizeBaseUrl(url: string): string {
   return url.trim().replace(/\/$/, "");
@@ -21,9 +23,36 @@ function getToken(): string | null {
   return localStorage.getItem("dukaos_token");
 }
 
+export function getFriendlyErrorMessage(message: string, lang: Lang): string {
+  const normalized = message.trim();
+
+  if (normalized === "Invalid phone or PIN") {
+    return t("auth.error.invalidCredentials", lang);
+  }
+
+  if (normalized === "Session expired") {
+    return t("auth.error.sessionExpired", lang);
+  }
+
+  if (normalized.includes("Too many authentication attempts")) {
+    return t("auth.error.rateLimited", lang);
+  }
+
+  if (normalized === "Unable to reach the DukaOS server. Confirm the API URL is correct and the backend is online.") {
+    return t("auth.error.serverOffline", lang);
+  }
+
+  if (normalized === "The DukaOS server returned an unexpected response format.") {
+    return t("auth.error.unexpectedResponse", lang);
+  }
+
+  return normalized;
+}
+
 async function request<T>(
   path: string,
-  options: RequestInit = {}
+  options: RequestInit = {},
+  lang: Lang = "en"
 ): Promise<T> {
   const token = getToken();
   const baseUrl = getBaseUrl();
@@ -41,7 +70,7 @@ async function request<T>(
   }
 
   if (res.status === 401) {
-    localStorage.removeItem("dukaos_token");
+    clearToken();
     window.location.href = "/";
     throw new Error("Session expired");
   }
@@ -51,12 +80,12 @@ async function request<T>(
   const payload = isJson ? await res.json() : await res.text();
 
   if (!res.ok) {
-    const message =
+    const rawMessage =
       typeof payload === "string"
         ? payload || `Request failed with status ${res.status}`
         : payload?.error || `Request failed with status ${res.status}`;
 
-    throw new Error(message);
+    throw new Error(getFriendlyErrorMessage(rawMessage, lang));
   }
 
   if (!isJson) {
@@ -68,12 +97,12 @@ async function request<T>(
 }
 
 export const api = {
-  get: <T>(path: string) => request<T>(path),
-  post: <T>(path: string, body: unknown) =>
-    request<T>(path, { method: "POST", body: JSON.stringify(body) }),
-  patch: <T>(path: string, body: unknown) =>
-    request<T>(path, { method: "PATCH", body: JSON.stringify(body) }),
-  delete: <T>(path: string) => request<T>(path, { method: "DELETE" }),
+  get: <T>(path: string, lang?: Lang) => request<T>(path, {}, lang),
+  post: <T>(path: string, body: unknown, lang?: Lang) =>
+    request<T>(path, { method: "POST", body: JSON.stringify(body) }, lang),
+  patch: <T>(path: string, body: unknown, lang?: Lang) =>
+    request<T>(path, { method: "PATCH", body: JSON.stringify(body) }, lang),
+  delete: <T>(path: string, lang?: Lang) => request<T>(path, { method: "DELETE" }, lang),
 };
 
 export function setToken(token: string) {
