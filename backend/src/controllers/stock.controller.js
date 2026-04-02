@@ -10,13 +10,6 @@ async function adjust(req, res) {
   const shopId = await getShopId(req.user.userId);
   const { productId, type, quantity, note } = req.body;
 
-  if (!productId || !type || !quantity) {
-    return res.status(400).json({ error: "productId, type, and quantity are required" });
-  }
-  if (!["IN", "OUT", "ADJUSTMENT"].includes(type.toUpperCase())) {
-    return res.status(400).json({ error: "type must be IN, OUT, or ADJUSTMENT" });
-  }
-
   const product = await prisma.product.findFirst({ where: { id: productId, shopId } });
   if (!product) return res.status(404).json({ error: "Product not found" });
 

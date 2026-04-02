@@ -3,8 +3,8 @@
 ## Live URLs
 
 - Frontend: `https://duka-os.vercel.app/`
-- Backend API: `https://backend-production-a87a.up.railway.app/api`
-- Health: `https://backend-production-a87a.up.railway.app/health`
+- Backend API: `https://dukaos-production.up.railway.app/api`
+- Health: `https://dukaos-production.up.railway.app/health`
 
 ## Test Accounts
 
@@ -39,13 +39,38 @@
 - Backend Prisma migration to apply: `20260311_add_bank_payment_method`
 - Production backend deploy command remains: `npm run start:prod`
 - Optional manual migration command: `npm run db:deploy`
+- Backend smoke test: `cd backend && npm run smoke:prod`
+- Frontend smoke test: `cd frontend && npm run smoke`
+- Frontend Playwright login smoke test: `cd frontend && npm run smoke:login`
 - Local Prisma validation requires `DATABASE_URL` to be set in the backend environment
 
 ## API Check
 
-- Visit `https://backend-production-a87a.up.railway.app/health`
+- Visit `https://dukaos-production.up.railway.app/health`
 - Expected response:
 
 ```json
 {"status":"ok","service":"DukaOS API"}
 ```
+
+## Automated Smoke Coverage
+
+- `backend/npm run smoke:prod`
+  - Healthcheck success
+  - Valid login success
+  - Authenticated `/api/auth/me` success
+  - Invalid token returns `401`
+  - Invalid auth payload returns `400`
+  - Invalid sales payload returns `400`
+  - Invalid stock payload returns `400`
+  - Invalid supplier payload returns `400`
+
+- `frontend/npm run smoke`
+  - Login page shell loads
+  - Manifest is reachable
+
+- `frontend/npm run smoke:login`
+  - Live login works
+  - Merchant dashboard loads
+  - Sales page opens after login
+  - Logout returns to the login page

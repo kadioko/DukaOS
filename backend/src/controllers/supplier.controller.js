@@ -31,9 +31,6 @@ async function get(req, res) {
 
 async function create(req, res) {
   const { name, phone, address } = req.body;
-  if (!name || !phone) {
-    return res.status(400).json({ error: "name and phone are required" });
-  }
   const supplier = await prisma.supplier.create({ data: { name, phone, address } });
   res.status(201).json({ supplier });
 }
@@ -83,12 +80,6 @@ async function updateOrderStatus(req, res) {
   if (!supplierRecord) return res.status(404).json({ error: "Supplier profile not found" });
 
   const { status } = req.body;
-  // Suppliers can only confirm, dispatch or cancel — not mark delivered.
-  // Delivery confirmation is done by the merchant (which also adds stock).
-  const validStatuses = ["CONFIRMED", "OUT_FOR_DELIVERY", "CANCELLED"];
-  if (!validStatuses.includes(status?.toUpperCase())) {
-    return res.status(400).json({ error: "Invalid status. Supplier can set: CONFIRMED, OUT_FOR_DELIVERY, CANCELLED" });
-  }
 
   const order = await prisma.order.findFirst({
     where: { id: req.params.orderId, supplierId: supplierRecord.id },

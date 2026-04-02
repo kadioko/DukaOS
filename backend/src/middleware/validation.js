@@ -3,6 +3,8 @@ const { body, query, validationResult } = require("express-validator");
 const PAYMENT_METHODS = ["CASH", "MPESA", "TIGOPESA", "AIRTEL_MONEY", "HALOPESA", "BANK", "CREDIT"];
 const ORDER_STATUSES = ["PENDING", "CONFIRMED", "OUT_FOR_DELIVERY", "DELIVERED", "CANCELLED"];
 const SUMMARY_PERIODS = ["today", "week", "month", "all"];
+const STOCK_MOVEMENT_TYPES = ["IN", "OUT", "ADJUSTMENT"];
+const SUPPLIER_PORTAL_STATUSES = ["CONFIRMED", "OUT_FOR_DELIVERY", "CANCELLED"];
 
 function handleValidationErrors(req, res, next) {
   const result = validationResult(req);
@@ -84,6 +86,43 @@ const orderCreateValidation = [
   handleValidationErrors,
 ];
 
+const stockAdjustValidation = [
+  body("productId").isString().notEmpty().withMessage("productId is required"),
+  body("type").custom((value) => STOCK_MOVEMENT_TYPES.includes(String(value).toUpperCase())).withMessage("type must be IN, OUT, or ADJUSTMENT"),
+  body("quantity").isFloat({ min: 0.000001 }).withMessage("quantity must be greater than 0"),
+  body("note").optional({ values: "falsy" }).trim().isLength({ max: 500 }).withMessage("Note must be 500 characters or less"),
+  handleValidationErrors,
+];
+
+const stockMovementsValidation = [
+  query("limit").optional().isInt({ min: 1, max: 200 }).withMessage("limit must be between 1 and 200"),
+  handleValidationErrors,
+];
+
+const supplierCreateValidation = [
+  body("name").trim().notEmpty().withMessage("Supplier name is required"),
+  body("phone").trim().notEmpty().withMessage("Supplier phone is required").bail().isLength({ max: 30 }).withMessage("Supplier phone must be 30 characters or less"),
+  body("address").optional({ values: "falsy" }).trim().isLength({ max: 255 }).withMessage("Address must be 255 characters or less"),
+  handleValidationErrors,
+];
+
+const supplierUpdateValidation = [
+  body("name").optional().trim().notEmpty().withMessage("Supplier name cannot be empty"),
+  body("phone").optional().trim().notEmpty().withMessage("Supplier phone cannot be empty").bail().isLength({ max: 30 }).withMessage("Supplier phone must be 30 characters or less"),
+  body("address").optional({ nullable: true, values: "falsy" }).trim().isLength({ max: 255 }).withMessage("Address must be 255 characters or less"),
+  handleValidationErrors,
+];
+
+const supplierOrdersValidation = [
+  query("status").optional().custom((value) => ORDER_STATUSES.includes(String(value).toUpperCase())).withMessage("Invalid order status"),
+  handleValidationErrors,
+];
+
+const supplierOrderStatusValidation = [
+  body("status").custom((value) => SUPPLIER_PORTAL_STATUSES.includes(String(value).toUpperCase())).withMessage("Invalid status. Supplier can set: CONFIRMED, OUT_FOR_DELIVERY, CANCELLED"),
+  handleValidationErrors,
+];
+
 module.exports = {
   handleValidationErrors,
   productCreateValidation,
@@ -93,4 +132,10 @@ module.exports = {
   saleCreateValidation,
   orderListValidation,
   orderCreateValidation,
+  stockAdjustValidation,
+  stockMovementsValidation,
+  supplierCreateValidation,
+  supplierUpdateValidation,
+  supplierOrdersValidation,
+  supplierOrderStatusValidation,
 };

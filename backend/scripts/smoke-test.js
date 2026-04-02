@@ -1,6 +1,7 @@
 const PROD_BASE_URL = process.env.SMOKE_BASE_URL || "https://dukaos-production.up.railway.app";
 const LOGIN_PHONE = process.env.SMOKE_TEST_PHONE || "+255700000003";
 const LOGIN_PIN = process.env.SMOKE_TEST_PIN || "1234";
+const INVALID_PHONE = "not-a-phone";
 
 async function request(path, options = {}) {
   const response = await fetch(`${PROD_BASE_URL}${path}`, options);
@@ -46,6 +47,50 @@ async function run() {
   });
   assert(invalid.response.status === 401, `Invalid token check expected 401, got ${invalid.response.status}`);
   console.log("✓ Invalid token handling passed");
+
+  const invalidLogin = await request("/api/auth/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ phone: INVALID_PHONE, pin: "12" }),
+  });
+  assert(
+    invalidLogin.response.status === 400 || invalidLogin.response.status === 401,
+    `Invalid login negative-path expected 400 or 401, got ${invalidLogin.response.status}`
+  );
+  console.log("✓ Auth negative-path check passed");
+
+  const invalidSales = await request("/api/sales", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${login.payload.token}`,
+    },
+    body: JSON.stringify({ items: [] }),
+  });
+  assert(invalidSales.response.status === 400, `Invalid sale payload expected 400, got ${invalidSales.response.status}`);
+  console.log("✓ Sale validation failure passed");
+
+  const invalidStock = await request("/api/stock/adjust", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${login.payload.token}`,
+    },
+    body: JSON.stringify({ productId: "", type: "BAD", quantity: 0 }),
+  });
+  assert(invalidStock.response.status === 400, `Invalid stock payload expected 400, got ${invalidStock.response.status}`);
+  console.log("✓ Stock validation failure passed");
+
+  const invalidSupplier = await request("/api/suppliers", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${login.payload.token}`,
+    },
+    body: JSON.stringify({ name: "", phone: "" }),
+  });
+  assert(invalidSupplier.response.status === 400, `Invalid supplier payload expected 400, got ${invalidSupplier.response.status}`);
+  console.log("✓ Supplier validation failure passed");
 
   console.log("Smoke test completed successfully.");
 }
