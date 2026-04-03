@@ -10,6 +10,8 @@
     "smoke": "node scripts/smoke-test.js",
     "smoke:login": "playwright test tests/login.smoke.spec.ts",
     "test:auth": "playwright test tests/auth.negative.spec.ts",
+    "test:inventory": "playwright test tests/inventory.flows.spec.ts",
+    "test:supplier": "playwright test tests/supplier.portal.spec.ts",
     "test:e2e": "playwright test"
   },
   "dependencies": {

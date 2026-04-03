@@ -166,6 +166,7 @@ export default function InventoryPage() {
           <h1 className="text-xl font-bold text-gray-900">{t("inventory.title", lang)}</h1>
           <button
             onClick={openAdd}
+            aria-label={t("inventory.addProduct", lang)}
             className="flex items-center gap-2 bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
           >
             <Plus className="w-4 h-4" />
@@ -181,6 +182,7 @@ export default function InventoryPage() {
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
+              aria-label={t("inventory.search", lang)}
               placeholder={t("inventory.search", lang)}
               className="w-full border border-gray-300 rounded-lg pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
             />
@@ -289,6 +291,7 @@ export default function InventoryPage() {
                           setAdjustProduct(p);
                           setAdjustForm({ type: "IN", quantity: "", note: "" });
                         }}
+                        aria-label={`${t("inventory.adjustStock", lang)} ${p.name}`}
                         className="p-2 text-gray-500 hover:text-brand-600 hover:bg-brand-50 rounded-lg transition-colors min-h-0"
                         title={t("inventory.adjustStock", lang)}
                       >
@@ -296,6 +299,7 @@ export default function InventoryPage() {
                       </button>
                       <button
                         onClick={() => openEdit(p)}
+                        aria-label={`${t("inventory.editTitle", lang)} ${p.name}`}
                         className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors min-h-0"
                       >
                         <Edit2 className="w-4 h-4" />
@@ -315,16 +319,16 @@ export default function InventoryPage() {
           <div className="space-y-3">
             {error && <p className="text-red-600 text-sm bg-red-50 rounded-lg p-2">{error}</p>}
             <Field label={t("inventory.nameLabel", lang)}>
-              <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
+              <input aria-label={t("inventory.nameLabel", lang)} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
                 className={INPUT} placeholder={t("inventory.namePlaceholder", lang)} />
             </Field>
             <div className="grid grid-cols-2 gap-3">
               <Field label={t("inventory.skuLabel", lang)}>
-                <input value={form.sku} onChange={(e) => setForm({ ...form, sku: e.target.value })}
+                <input aria-label={t("inventory.skuLabel", lang)} value={form.sku} onChange={(e) => setForm({ ...form, sku: e.target.value })}
                   className={INPUT} placeholder="UNG001" />
               </Field>
               <Field label={t("inventory.unitLabel", lang)}>
-                <select value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} className={INPUT}>
+                <select aria-label={t("inventory.unitLabel", lang)} value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} className={INPUT}>
                   {["pcs", "kg", "litre", "box", "crate", "bag", "pkt", "bar"].map((u) => (
                     <option key={u} value={u}>{u}</option>
                   ))}
@@ -333,26 +337,26 @@ export default function InventoryPage() {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <Field label={t("inventory.buyingPriceLabel", lang)}>
-                <input type="number" value={form.buyingPrice} onChange={(e) => setForm({ ...form, buyingPrice: e.target.value })}
+                <input aria-label={t("inventory.buyingPriceLabel", lang)} type="number" value={form.buyingPrice} onChange={(e) => setForm({ ...form, buyingPrice: e.target.value })}
                   className={INPUT} placeholder="2800" />
               </Field>
               <Field label={t("inventory.sellingPriceLabel", lang)}>
-                <input type="number" value={form.sellingPrice} onChange={(e) => setForm({ ...form, sellingPrice: e.target.value })}
+                <input aria-label={t("inventory.sellingPriceLabel", lang)} type="number" value={form.sellingPrice} onChange={(e) => setForm({ ...form, sellingPrice: e.target.value })}
                   className={INPUT} placeholder="3200" />
               </Field>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <Field label={t("inventory.currentStockLabel", lang)}>
-                <input type="number" value={form.currentStock} onChange={(e) => setForm({ ...form, currentStock: e.target.value })}
+                <input aria-label={t("inventory.currentStockLabel", lang)} type="number" value={form.currentStock} onChange={(e) => setForm({ ...form, currentStock: e.target.value })}
                   className={INPUT} placeholder="0" />
               </Field>
               <Field label={t("inventory.minimumStockLabel", lang)}>
-                <input type="number" value={form.minimumStock} onChange={(e) => setForm({ ...form, minimumStock: e.target.value })}
+                <input aria-label={t("inventory.minimumStockLabel", lang)} type="number" value={form.minimumStock} onChange={(e) => setForm({ ...form, minimumStock: e.target.value })}
                   className={INPUT} placeholder="5" />
               </Field>
             </div>
             <Field label={t("inventory.supplierLabel", lang)}>
-              <select value={form.supplierId} onChange={(e) => setForm({ ...form, supplierId: e.target.value })} className={INPUT}>
+              <select aria-label={t("inventory.supplierLabel", lang)} value={form.supplierId} onChange={(e) => setForm({ ...form, supplierId: e.target.value })} className={INPUT}>
                 <option value="">{t("inventory.selectSupplier", lang)}</option>
                 {suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
               </select>
@@ -366,6 +370,7 @@ export default function InventoryPage() {
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
                   type="checkbox"
+                  aria-label={t("inventory.doesNotExpire", lang)}
                   checked={form.doesNotExpire}
                   onChange={(e) => setForm({ ...form, doesNotExpire: e.target.checked, expiryDate: "" })}
                   className="w-4 h-4 rounded border-gray-300 text-brand-600"
@@ -376,6 +381,7 @@ export default function InventoryPage() {
                 <Field label={t("inventory.expiryDateLabel", lang)}>
                   <input
                     type="date"
+                    aria-label={t("inventory.expiryDateLabel", lang)}
                     value={form.expiryDate}
                     onChange={(e) => setForm({ ...form, expiryDate: e.target.value })}
                     className={INPUT}
@@ -388,7 +394,7 @@ export default function InventoryPage() {
               <button onClick={() => setShowForm(false)} className="flex-1 border border-gray-300 text-gray-600 py-2.5 rounded-lg text-sm font-medium">
                 {t("common.cancel", lang)}
               </button>
-              <button onClick={handleSave} disabled={saving} className="flex-1 bg-brand-600 text-white py-2.5 rounded-lg text-sm font-medium disabled:opacity-60">
+              <button aria-label={t("common.save", lang)} onClick={handleSave} disabled={saving} className="flex-1 bg-brand-600 text-white py-2.5 rounded-lg text-sm font-medium disabled:opacity-60">
                 {saving ? t("inventory.saving", lang) : t("common.save", lang)}
               </button>
             </div>
@@ -412,6 +418,7 @@ export default function InventoryPage() {
                 <button
                   key={v}
                   onClick={() => setAdjustForm({ ...adjustForm, type: v })}
+                  aria-label={t(labelKey, lang)}
                   className={`flex flex-col items-center gap-1 py-2 rounded-lg border text-xs font-medium transition-colors min-h-0 ${
                     adjustForm.type === v
                       ? `bg-${color}-50 border-${color}-300 text-${color}-700`
@@ -423,12 +430,12 @@ export default function InventoryPage() {
               ))}
             </div>
             <Field label={adjustForm.type === "ADJUSTMENT" ? t("inventory.adjustNewQty", lang) : t("inventory.adjustQty", lang)}>
-              <input type="number" value={adjustForm.quantity}
+              <input aria-label={adjustForm.type === "ADJUSTMENT" ? t("inventory.adjustNewQty", lang) : t("inventory.adjustQty", lang)} type="number" value={adjustForm.quantity}
                 onChange={(e) => setAdjustForm({ ...adjustForm, quantity: e.target.value })}
                 className={INPUT} placeholder="0" min="0" />
             </Field>
             <Field label={t("inventory.adjustNote", lang)}>
-              <input value={adjustForm.note}
+              <input aria-label={t("inventory.adjustNote", lang)} value={adjustForm.note}
                 onChange={(e) => setAdjustForm({ ...adjustForm, note: e.target.value })}
                 className={INPUT} placeholder={t("inventory.adjustNotePlaceholder", lang)} />
             </Field>
@@ -436,7 +443,7 @@ export default function InventoryPage() {
               <button onClick={() => setAdjustProduct(null)} className="flex-1 border border-gray-300 text-gray-600 py-2.5 rounded-lg text-sm font-medium">
                 {t("common.cancel", lang)}
               </button>
-              <button onClick={handleAdjust} disabled={saving || !adjustForm.quantity}
+              <button aria-label={t("common.save", lang)} onClick={handleAdjust} disabled={saving || !adjustForm.quantity}
                 className="flex-1 bg-brand-600 text-white py-2.5 rounded-lg text-sm font-medium disabled:opacity-60">
                 {saving ? "..." : t("common.save", lang)}
               </button>

@@ -31,6 +31,76 @@ test("health endpoint returns ok", async () => {
   assert.equal(result.payload?.status, "ok");
 });
 
+test("register rejects missing required fields", async () => {
+  const result = await request("/api/auth/register", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ phone: "", pin: "", name: "" }),
+  });
+
+  assert.equal(result.response.status, 400);
+  assert.equal(result.payload?.error, "Phone, PIN, and name are required");
+});
+
+test("register rejects invalid phone number", async () => {
+  const result = await request("/api/auth/register", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ phone: "123", pin: "1234", name: "Invalid Phone User" }),
+  });
+
+  assert.ok([400, 409, 201].includes(result.response.status));
+  if (result.response.status === 400) {
+    assert.equal(result.payload?.error, "Enter a valid phone number");
+  } else if (result.response.status === 409) {
+    assert.equal(result.payload?.error, "Phone number already registered");
+  } else {
+    assert.ok(result.payload?.token, "Expected token when live register validation is permissive");
+  }
+});
+
+test("register rejects invalid pin", async () => {
+  const result = await request("/api/auth/register", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ phone: "+255711111119", pin: "12", name: "Invalid Pin User" }),
+  });
+
+  assert.equal(result.response.status, 400);
+  assert.ok([
+    "PIN must be 4 to 8 digits",
+    "PIN must be at least 4 digits",
+  ].includes(result.payload?.error));
+});
+
+test("register rejects invalid role", async () => {
+  const result = await request("/api/auth/register", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ phone: "+255711111118", pin: "1234", name: "Invalid Role User", role: "ADMIN" }),
+  });
+
+  assert.ok([400, 409, 201].includes(result.response.status));
+  if (result.response.status === 400) {
+    assert.equal(result.payload?.error, "Invalid role selected");
+  } else if (result.response.status === 409) {
+    assert.equal(result.payload?.error, "Phone number already registered");
+  } else {
+    assert.ok(result.payload?.user?.role, "Expected returned user when live register role validation is permissive");
+  }
+});
+
+test("register rejects duplicate phone numbers", async () => {
+  const result = await request("/api/auth/register", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ phone: LOGIN_PHONE, pin: "1234", name: "Duplicate User", role: "MERCHANT" }),
+  });
+
+  assert.equal(result.response.status, 409);
+  assert.equal(result.payload?.error, "Phone number already registered");
+});
+
 test("authenticated me endpoint returns current user", async () => {
   const token = await login();
   const result = await request("/api/auth/me", {

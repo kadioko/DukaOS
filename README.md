@@ -22,7 +22,7 @@ DukaOS starts as **software + payments + procurement**, then layers working-capi
 
 ## Live Production
 
-- **Frontend:** [https://duka-os.vercel.app/]((https://duka-os.vercel.app/))
+- **Frontend:** [https://duka-os.vercel.app/](https://duka-os.vercel.app/)
 - **Backend API:** [https://dukaos-production.up.railway.app/api](https://dukaos-production.up.railway.app/api)
 - **Health Check:** [https://dukaos-production.up.railway.app/health](https://dukaos-production.up.railway.app/health)
 
@@ -33,7 +33,7 @@ DukaOS starts as **software + payments + procurement**, then layers working-capi
 ### For Merchants (Wafanyabiashara)
 
 | Feature | Description |
-|---|---|
+| --- | --- |
 | **Inventory tracking** | Add products, set buying/selling prices, track stock levels |
 | **Low-stock alerts** | Instant badge + dashboard alert when any product hits minimum stock |
 | **POS / Sales entry** | Record sales by product, quantity, and payment method |
@@ -49,7 +49,7 @@ DukaOS starts as **software + payments + procurement**, then layers working-capi
 ### For Suppliers (Wasambazaji)
 
 | Feature | Description |
-|---|---|
+| --- | --- |
 | **Order dashboard** | See all incoming orders from merchants |
 | **Status management** | Confirm → Dispatch (supplier advances to OUT_FOR_DELIVERY only) |
 | **Route view** | Group pending orders by location |
@@ -68,7 +68,7 @@ DukaOS starts as **software + payments + procurement**, then layers working-capi
 ## Revenue Model
 
 | Stream | Target |
-|---|---|
+| --- | --- |
 | Merchant subscriptions | ~300 merchants × TZS 25,000/month = **TZS 7.5M MRR** |
 | Supplier subscriptions | ~20 suppliers × TZS 375,000/month = **TZS 7.5M MRR** |
 | Transaction/procurement fees | % of GMV flowing through orders |
@@ -82,7 +82,7 @@ DukaOS starts as **software + payments + procurement**, then layers working-capi
 ## Tech Stack
 
 | Layer | Technology |
-|---|---|
+| --- | --- |
 | **Backend** | Node.js · Express · Prisma ORM |
 | **Database** | PostgreSQL |
 | **Frontend** | Next.js 14 · React · TypeScript · Tailwind CSS |
@@ -112,7 +112,7 @@ DukaOS starts as **software + payments + procurement**, then layers working-capi
 
 ## Project Structure
 
-```
+```text
 DukaOS/
 ├── backend/
 │   ├── prisma/
@@ -161,7 +161,7 @@ DukaOS/
 
 ## Database Schema
 
-```
+```text
 User ──────── Shop ──────── Product ──────── StockMovement
                │                │
                └──── Sale ──────┘ (SaleItem)
@@ -170,6 +170,7 @@ User ──────── Shop ──────── Product ────
 ```
 
 **Core models:**
+
 - `User` — merchant or supplier, identified by phone + PIN
 - `Shop` — one shop per merchant (extensible to multi-shop)
 - `Product` — SKU, buying/selling price, stock level, minimum threshold
@@ -204,8 +205,9 @@ docker-compose exec backend node prisma/seed.js
 ```
 
 The app will be available at:
-- **Frontend:** http://localhost:3000
-- **Backend API:** http://localhost:4000
+
+- **Frontend:** [http://localhost:3000](http://localhost:3000)
+- **Backend API:** [http://localhost:4000](http://localhost:4000)
 
 ### Local Development (without Docker)
 
@@ -280,6 +282,7 @@ npm run dev         # runs on :3000
 ## API Reference
 
 ### Auth
+
 ```text
 POST   /api/auth/register    # Register new merchant or supplier
 POST   /api/auth/login       # Login, returns JWT
@@ -288,6 +291,7 @@ PATCH  /api/auth/language    # Switch UI language (sw / en)
 ```
 
 ### Products (Merchant only)
+
 ```text
 GET    /api/products              # List all products (search, filter)
 GET    /api/products/low-stock    # Products at or below minimum stock
@@ -298,12 +302,14 @@ DELETE /api/products/:id          # Soft-delete (deactivate)
 ```
 
 ### Stock Movements
+
 ```text
 POST   /api/stock/adjust                    # Adjust stock (IN / OUT / ADJUSTMENT)
 GET    /api/stock/:productId/movements      # Full audit trail for a product
 ```
 
 ### Sales
+
 ```text
 GET    /api/sales            # Sale history (filterable by date)
 GET    /api/sales/summary    # Aggregated totals by period (today/week/month)
@@ -312,7 +318,8 @@ POST   /api/sales            # Record a sale (auto-decrements stock) with cash, 
 ```
 
 ### Orders
-```
+
+```text
 GET    /api/orders                          # List orders (filterable by status)
 GET    /api/orders/:id                      # Order detail + WhatsApp message
 POST   /api/orders                          # Create order (returns WhatsApp message)
@@ -322,7 +329,8 @@ PATCH  /api/orders/:id/cancel               # Cancel order
 ```
 
 ### Suppliers
-```
+
+```text
 GET    /api/suppliers                                       # List all suppliers
 GET    /api/suppliers/:id                                   # Supplier detail
 POST   /api/suppliers                                       # Add supplier
@@ -335,7 +343,8 @@ PATCH  /api/suppliers/portal/orders/:orderId/status         # Update order statu
 ```
 
 ### Dashboard
-```
+
+```text
 GET    /api/dashboard?period=today|week|month|all   # Full business overview, payment mix, and all-time business history
 ```
 
@@ -343,14 +352,38 @@ GET    /api/dashboard?period=today|week|month|all   # Full business overview, pa
 
 ## Testing and QA
 
-- Use `TESTING.md` as the primary smoke-test checklist for production verification.
-- Minimum regression checks for each release:
-  - login for merchant and supplier accounts
-  - dashboard load with `today`, `month`, and `all` filters
-  - language toggle persistence
-  - bank payment sale creation
-  - supplier order visibility and status transitions
-  - backend health endpoint response
+- Use `TESTING.md` as the primary release-verification reference.
+
+### Smoke tests
+
+- Goal: fast checks against production-safe paths and critical availability.
+- Commands:
+  - `cd backend && npm run smoke:prod`
+  - `cd frontend && npm run smoke`
+  - `cd frontend && npm run smoke:login`
+
+### Integration tests
+
+- Goal: API-level validation and negative-path checks with the Node test runner.
+- Commands:
+  - `cd backend && npm run test:api`
+
+### E2E tests
+
+- Goal: browser-level workflow checks with Playwright.
+- Commands:
+  - `cd frontend && npm run test:auth`
+  - `cd frontend && npm run test:e2e`
+
+### Minimum release regression checklist
+
+- login for merchant and supplier accounts
+- dashboard load with `today`, `month`, and `all` filters
+- language toggle persistence
+- bank payment sale creation
+- supplier order visibility and status transitions
+- inventory add, edit, and stock adjustment workflows
+- backend health endpoint response
 
 ---
 
@@ -358,7 +391,7 @@ GET    /api/dashboard?period=today|week|month|all   # Full business overview, pa
 
 Every order automatically generates a WhatsApp message in Kiswahili:
 
-```
+```text
 🛒 *AGIZO JIPYA - Duka la Amina*
 📅 Tarehe: 6 Machi 2026
 🔢 Nambari ya Agizo: #A1B2C3D4
@@ -381,7 +414,7 @@ The frontend provides a **"Fungua WhatsApp"** button that opens WhatsApp with th
 ## Payment Methods Supported
 
 | Method | Swahili Label |
-|---|---|
+| --- | --- |
 | Cash | Pesa Taslimu |
 | Bank | Benki |
 | M-Pesa (Vodacom) | M-Pesa |
@@ -395,6 +428,7 @@ The frontend provides a **"Fungua WhatsApp"** button that opens WhatsApp with th
 ## Roadmap
 
 ### Phase 1 — Now (Launched)
+
 - [x] Merchant registration + PIN auth
 - [x] Product catalog + stock tracking
 - [x] Low-stock alerts
@@ -412,6 +446,7 @@ The frontend provides a **"Fungua WhatsApp"** button that opens WhatsApp with th
 - [x] Payment mix and business history dashboard views
 
 ### Phase 2 — Next
+
 - [ ] OTP-based phone verification (Africa's Talking / Twilio)
 - [ ] M-Pesa STK push integration (Vodacom Tanzania API)
 - [ ] Barcode/QR scanner for stock-in
@@ -422,6 +457,7 @@ The frontend provides a **"Fungua WhatsApp"** button that opens WhatsApp with th
 - [ ] Supplier route optimization
 
 ### Phase 3 — Scale
+
 - [ ] Working-capital financing (requires BoT microfinance license or licensed partner)
 - [ ] Demand forecasting ("order X units based on last 4 weeks")
 - [ ] Supplier marketplace (merchants browse supplier catalogs)
@@ -447,6 +483,7 @@ The frontend provides a **"Fungua WhatsApp"** button that opens WhatsApp with th
 **Wedge:** Mini-groceries and kiosks in Dar es Salaam
 
 **Priority areas:**
+
 - Kariakoo
 - Mbagala
 - Tegeta
@@ -454,12 +491,14 @@ The frontend provides a **"Fungua WhatsApp"** button that opens WhatsApp with th
 - Kinondoni
 
 **Acquisition channels:**
+
 - Field reps with in-person demos
 - One-page Kiswahili flyer
 - WhatsApp onboarding flow
 - Merchant referral bonus
 
 **Pricing:**
+
 - Merchants: TZS 20,000–37,500/month (~$8–15)
 - Suppliers: TZS 375,000/month (~$150)
 - Free setup for first 20 merchants

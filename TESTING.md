@@ -1,4 +1,4 @@
-# DukaOS Production Testing
+# DukaOS Testing Guide
 
 ## Live URLs
 
@@ -12,7 +12,7 @@
 - Test Merchant: `+255700000003` / `1234`
 - Supplier: `+255700000001` / `1234`
 
-## Quick Smoke Test
+## Manual Production Smoke Test
 
 1. Open the frontend URL.
 2. Log in with the test merchant account.
@@ -33,6 +33,54 @@
 17. Log in with the supplier account.
 18. Confirm the supplier portal loads.
 
+## Automated Test Layers
+
+### Smoke tests
+
+- `cd backend && npm run smoke:prod`
+  - Healthcheck success
+  - Valid login success
+  - Authenticated `/api/auth/me` success
+  - Invalid token returns `401`
+  - Invalid auth payload returns `400`
+  - Invalid sales payload returns `400`
+  - Invalid stock payload returns `400`
+  - Invalid supplier payload returns `400`
+
+- `cd frontend && npm run smoke`
+  - Login page shell loads
+  - Manifest is reachable
+
+- `cd frontend && npm run smoke:login`
+  - Live login works
+  - Merchant dashboard loads
+  - Inventory page opens after login
+  - Orders page opens after login
+  - Sales page opens after login
+  - Logout returns to the login page
+
+### Integration tests
+
+- `cd backend && npm run test:api`
+  - Health endpoint returns OK
+  - Register validation edge cases reject bad payloads
+  - Duplicate registration is rejected
+  - Authenticated `/api/auth/me` succeeds
+  - Invalid token is rejected
+  - Sales, stock, and supplier validation failures are rejected
+
+### E2E tests
+
+- `cd frontend && npm run test:auth`
+  - Invalid phone validation state
+  - Invalid PIN validation state
+  - Invalid credential error state
+
+- `cd frontend && npm run test:e2e`
+  - Live login smoke coverage
+  - Inventory add, edit, and stock-adjust flows with mocked mutations
+  - Supplier portal order status actions with mocked mutations
+
 ## Deployment Readiness Checks
 
 - Frontend production build should pass with `npx next build`
@@ -40,8 +88,11 @@
 - Production backend deploy command remains: `npm run start:prod`
 - Optional manual migration command: `npm run db:deploy`
 - Backend smoke test: `cd backend && npm run smoke:prod`
+- Backend integration test: `cd backend && npm run test:api`
 - Frontend smoke test: `cd frontend && npm run smoke`
-- Frontend Playwright login smoke test: `cd frontend && npm run smoke:login`
+- Frontend Playwright smoke test: `cd frontend && npm run smoke:login`
+- Frontend Playwright auth test: `cd frontend && npm run test:auth`
+- Frontend Playwright E2E suite: `cd frontend && npm run test:e2e`
 - Local Prisma validation requires `DATABASE_URL` to be set in the backend environment
 
 ## API Check
@@ -53,24 +104,8 @@
 {"status":"ok","service":"DukaOS API"}
 ```
 
-## Automated Smoke Coverage
+## Release Recommendation
 
-- `backend/npm run smoke:prod`
-  - Healthcheck success
-  - Valid login success
-  - Authenticated `/api/auth/me` success
-  - Invalid token returns `401`
-  - Invalid auth payload returns `400`
-  - Invalid sales payload returns `400`
-  - Invalid stock payload returns `400`
-  - Invalid supplier payload returns `400`
-
-- `frontend/npm run smoke`
-  - Login page shell loads
-  - Manifest is reachable
-
-- `frontend/npm run smoke:login`
-  - Live login works
-  - Merchant dashboard loads
-  - Sales page opens after login
-  - Logout returns to the login page
+- Run smoke tests on every deployment.
+- Run backend integration tests whenever auth, validation, or route middleware changes.
+- Run the Playwright E2E suite whenever inventory, orders, supplier portal, or auth UX changes.

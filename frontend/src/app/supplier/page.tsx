@@ -165,6 +165,7 @@ export default function SupplierPortal() {
                       )}
                     </div>
                     <button onClick={() => setExpanded(expanded === order.id ? null : order.id)}
+                      aria-label={`${expanded === order.id ? "Collapse" : "Expand"} order ${order.shop.name}`}
                       className="text-gray-400 min-h-0">
                       {expanded === order.id ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                     </button>
@@ -186,6 +187,7 @@ export default function SupplierPortal() {
                         <button
                           onClick={() => updateStatus(order.id, nextAction.action)}
                           disabled={updating === order.id}
+                          aria-label={`${nextAction.label} ${order.shop.name}`}
                           className={`w-full ${nextAction.color} text-white py-2.5 rounded-lg text-sm font-medium disabled:opacity-60 flex items-center justify-center gap-2`}
                         >
                           {updating === order.id ? (
@@ -206,6 +208,7 @@ export default function SupplierPortal() {
                       )}
                       {order.status === "PENDING" && (
                         <button onClick={() => updateStatus(order.id, "CANCELLED")}
+                          aria-label={`Kataa Agizo ${order.shop.name}`}
                           className="w-full mt-2 border border-red-200 text-red-600 py-2 rounded-lg text-sm hover:bg-red-50 flex items-center justify-center gap-2">
                           <X className="w-3.5 h-3.5" /> Kataa Agizo
                         </button>
