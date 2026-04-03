@@ -270,7 +270,7 @@ npm run dev         # runs on :3000
 ## Demo Accounts (after seeding)
 
 | Role | Phone | PIN | Notes |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | Merchant | +255700000002 | 1234 | Mama Amina's grocery shop in Mbagala |
 | Test Merchant | +255700000003 | 1234 | Dedicated production testing merchant account in Kinondoni |
 | Supplier | +255700000001 | 1234 | Jumla Traders Ltd, Kariakoo |
@@ -280,7 +280,7 @@ npm run dev         # runs on :3000
 ## API Reference
 
 ### Auth
-```
+```text
 POST   /api/auth/register    # Register new merchant or supplier
 POST   /api/auth/login       # Login, returns JWT
 GET    /api/auth/me          # Get current user profile
@@ -288,7 +288,7 @@ PATCH  /api/auth/language    # Switch UI language (sw / en)
 ```
 
 ### Products (Merchant only)
-```
+```text
 GET    /api/products              # List all products (search, filter)
 GET    /api/products/low-stock    # Products at or below minimum stock
 GET    /api/products/:id          # Product detail + stock history
@@ -298,13 +298,13 @@ DELETE /api/products/:id          # Soft-delete (deactivate)
 ```
 
 ### Stock Movements
-```
+```text
 POST   /api/stock/adjust                    # Adjust stock (IN / OUT / ADJUSTMENT)
 GET    /api/stock/:productId/movements      # Full audit trail for a product
 ```
 
 ### Sales
-```
+```text
 GET    /api/sales            # Sale history (filterable by date)
 GET    /api/sales/summary    # Aggregated totals by period (today/week/month)
 GET    /api/sales/:id        # Sale detail

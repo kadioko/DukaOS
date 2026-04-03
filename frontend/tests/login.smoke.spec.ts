@@ -18,6 +18,12 @@ test("live login smoke test", async ({ page }) => {
 
   if (/dashboard/.test(page.url())) {
     await expect(page.getByRole("heading", { name: /business overview|muhtasari wa biashara/i })).toBeVisible();
+    await page.getByRole("link", { name: /inventory|hifadhi ya bidhaa/i }).click();
+    await page.waitForURL(/inventory/, { timeout: 15000 });
+    await expect(page.getByRole("heading", { name: /inventory|hifadhi ya bidhaa/i })).toBeVisible();
+    await page.getByRole("link", { name: /orders|maagizo/i }).click();
+    await page.waitForURL(/orders/, { timeout: 15000 });
+    await expect(page.getByRole("heading", { name: /supplier orders|maagizo ya bidhaa/i })).toBeVisible();
     await page.getByRole("link", { name: /sales|mauzo/i }).click();
     await page.waitForURL(/sales/, { timeout: 15000 });
     await expect(page.getByRole("heading", { name: /sales|mauzo/i })).toBeVisible();
