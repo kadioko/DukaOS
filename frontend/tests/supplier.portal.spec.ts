@@ -79,8 +79,7 @@ test("supplier can confirm, dispatch, and cancel portal orders", async ({ page }
   await page.getByRole("button", { name: /zilizothibitishwa/i }).click();
   await expect(page.getByText("Duka la Amina")).toBeVisible();
   await expect(page.getByText("Duka la Rehema")).toBeVisible();
-  await expect(page.getByText(/imethibitishwa/i)).toBeVisible();
-  await page.getByRole("button", { name: /expand order duka la amina/i }).click();
+  await expect(page.locator("div.bg-white.rounded-xl.border").filter({ hasText: "Duka la Amina" }).getByText(/imethibitishwa/i)).toBeVisible();
   await page.getByRole("button", { name: /safirishwa/i }).first().click();
   await page.getByRole("button", { name: /zinakwenda/i }).click();
   await expect(page.getByText("Duka la Amina")).toBeVisible();

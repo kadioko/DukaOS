@@ -159,5 +159,5 @@ test("inventory supports add, edit, and stock adjustment flows", async ({ page }
   await page.getByLabel(/note|maelezo/i).fill("Stock take correction");
   await page.getByLabel(/^save$|^hifadhi$/i).click();
 
-  await expect(page.getByText(/25 kg/)).toBeVisible();
+  await expect(page.getByText(/25 pcs/)).toBeVisible();
 });
