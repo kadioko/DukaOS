@@ -9,6 +9,17 @@ function getClientKey(req) {
   return req.ip || req.socket?.remoteAddress || "unknown";
 }
 
+const apiRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 200,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: getClientKey,
+  message: {
+    error: "Too many requests. Please wait a few minutes and try again.",
+  },
+});
+
 const authRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 10,
@@ -20,4 +31,4 @@ const authRateLimiter = rateLimit({
   },
 });
 
-module.exports = { authRateLimiter };
+module.exports = { apiRateLimiter, authRateLimiter };

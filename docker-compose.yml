@@ -6,7 +6,7 @@ services:
     restart: always
     environment:
       POSTGRES_USER: dukaos
-      POSTGRES_PASSWORD: dukaos_secret
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-dukaos_secret}
       POSTGRES_DB: dukaos
     ports:
       - "5432:5432"
@@ -21,8 +21,8 @@ services:
     ports:
       - "4000:4000"
     environment:
-      DATABASE_URL: postgresql://dukaos:dukaos_secret@db:5432/dukaos
-      JWT_SECRET: change_this_secret_in_production
+      DATABASE_URL: postgresql://dukaos:${POSTGRES_PASSWORD:-dukaos_secret}@db:5432/dukaos
+      JWT_SECRET: ${JWT_SECRET:-change_this_secret_in_production}
       PORT: 4000
     volumes:
       - ./backend:/app

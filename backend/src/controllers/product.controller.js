@@ -8,22 +8,38 @@ async function getShopId(userId) {
 
 async function list(req, res) {
   const shopId = await getShopId(req.user.userId);
-  const { lowStock, search } = req.query;
+  const { lowStock, search, page = 1, limit = 50 } = req.query;
+  const pageNumber = Number(page);
+  const limitNumber = Number(limit);
+  const skip = (pageNumber - 1) * limitNumber;
 
   const where = { shopId, isActive: true };
   if (search) where.name = { contains: search, mode: "insensitive" };
 
-  const products = await prisma.product.findMany({
-    where,
-    include: { supplier: { select: { id: true, name: true, phone: true } } },
-    orderBy: { name: "asc" },
-  });
+  const [products, total] = await Promise.all([
+    prisma.product.findMany({
+      where,
+      include: { supplier: { select: { id: true, name: true, phone: true } } },
+      orderBy: { name: "asc" },
+      skip,
+      take: limitNumber,
+    }),
+    prisma.product.count({ where }),
+  ]);
 
   const result = lowStock === "true"
     ? products.filter((p) => p.currentStock <= p.minimumStock)
     : products;
 
-  res.json({ products: result });
+  res.json({
+    products: result,
+    pagination: {
+      page: pageNumber,
+      limit: limitNumber,
+      total,
+      totalPages: Math.ceil(total / limitNumber),
+    },
+  });
 }
 
 async function get(req, res) {
@@ -120,22 +136,11 @@ async function remove(req, res) {
 async function getLowStock(req, res) {
   const shopId = await getShopId(req.user.userId);
   const products = await prisma.product.findMany({
-    where: {
-      shopId,
-      isActive: true,
-      currentStock: { lte: prisma.product.fields.minimumStock },
-    },
-    include: { supplier: { select: { id: true, name: true, phone: true } } },
-    orderBy: { currentStock: "asc" },
-  });
-  // Use JS filter since Prisma doesn't support column comparison directly
-  const shop = await prisma.shop.findUnique({ where: { id: shopId } });
-  const allProducts = await prisma.product.findMany({
     where: { shopId, isActive: true },
     include: { supplier: { select: { id: true, name: true, phone: true } } },
+    orderBy: [{ currentStock: "asc" }, { name: "asc" }],
   });
-  const lowStockProducts = allProducts.filter((p) => p.currentStock <= p.minimumStock);
-  res.json({ products: lowStockProducts });
+  res.json({ products: products.filter((p) => p.currentStock <= p.minimumStock) });
 }
 
 module.exports = { list, get, create, update, remove, getLowStock };

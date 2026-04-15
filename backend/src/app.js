@@ -10,6 +10,7 @@ const orderRoutes = require("./routes/order.routes");
 const supplierRoutes = require("./routes/supplier.routes");
 const dashboardRoutes = require("./routes/dashboard.routes");
 const stockRoutes = require("./routes/stock.routes");
+const { apiRateLimiter } = require("./middleware/rateLimit");
 
 const app = express();
 
@@ -54,6 +55,7 @@ app.use(morgan("dev"));
 
 app.get("/health", (req, res) => res.json({ status: "ok", service: "DukaOS API" }));
 
+app.use("/api", apiRateLimiter);
 app.use("/api/auth", authRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/sales", saleRoutes);

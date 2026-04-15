@@ -7,15 +7,17 @@
     "build": "next build",
     "start": "next start",
     "start:prod": "next start",
+    "typecheck": "tsc --noEmit",
     "smoke": "node scripts/smoke-test.js",
     "smoke:login": "playwright test tests/login.smoke.spec.ts",
     "test:auth": "playwright test tests/auth.negative.spec.ts",
     "test:inventory": "playwright test tests/inventory.flows.spec.ts",
     "test:supplier": "playwright test tests/supplier.portal.spec.ts",
+    "test:mocked": "playwright test tests/auth.negative.spec.ts tests/inventory.flows.spec.ts tests/supplier.portal.spec.ts",
     "test:e2e": "playwright test"
   },
   "dependencies": {
-    "next": "^14.1.0",
+    "next": "^15.1.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "recharts": "^2.10.3",

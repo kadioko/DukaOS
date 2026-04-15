@@ -20,14 +20,27 @@ async function overview(req, res) {
   const { period = "today" } = req.query;
   const from = startOf(period);
   const salesWhere = from ? { shopId, createdAt: { gte: from } } : { shopId };
+  const activeProductsWhere = { shopId, isActive: true };
 
-  const [salesAgg, salesCount, allProducts, pendingOrders, recentSales] = await Promise.all([
+  const [salesAgg, salesCount, totalProducts, lowStockCandidates, lowStockCount, outOfStockCount, pendingOrders, recentSales] = await Promise.all([
     prisma.sale.aggregate({
       where: salesWhere,
       _sum: { totalAmount: true, profit: true },
     }),
     prisma.sale.count({ where: salesWhere }),
-    prisma.product.findMany({ where: { shopId, isActive: true } }),
+    prisma.product.count({ where: activeProductsWhere }),
+    prisma.product.findMany({
+      where: activeProductsWhere,
+      select: { id: true, name: true, currentStock: true, minimumStock: true, unit: true },
+      orderBy: [{ currentStock: "asc" }, { name: "asc" }],
+    }),
+    prisma.product.count({
+      where: {
+        ...activeProductsWhere,
+        currentStock: { gt: 0, lte: 5 },
+      },
+    }),
+    prisma.product.count({ where: { ...activeProductsWhere, currentStock: 0 } }),
     prisma.order.count({ where: { shopId, status: { in: ["PENDING", "CONFIRMED", "OUT_FOR_DELIVERY"] } } }),
     prisma.sale.findMany({
       where: salesWhere,
@@ -37,8 +50,7 @@ async function overview(req, res) {
     }),
   ]);
 
-  const lowStockProducts = allProducts.filter((p) => p.currentStock <= p.minimumStock);
-  const outOfStockProducts = allProducts.filter((p) => p.currentStock === 0);
+  const lowStockProducts = lowStockCandidates.filter((p) => p.currentStock <= p.minimumStock);
 
   const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
   const dailySales = await prisma.sale.findMany({
@@ -110,9 +122,9 @@ async function overview(req, res) {
       totalProfit: salesAgg._sum.profit || 0,
       salesCount,
       pendingOrders,
-      totalProducts: allProducts.length,
-      lowStockCount: lowStockProducts.length,
-      outOfStockCount: outOfStockProducts.length,
+      totalProducts,
+      lowStockCount: Math.max(lowStockCount, lowStockProducts.length),
+      outOfStockCount,
     },
     allTimeSummary: {
       totalSales: historySales.reduce((sum, sale) => sum + sale.totalAmount, 0),
