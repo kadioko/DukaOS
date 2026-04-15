@@ -26,13 +26,28 @@ interface User {
   supplier?: { name: string };
 }
 
-const merchantNav = [
+interface NavItem {
+  href: string;
+  labelKey?: string;
+  label?: string;
+  icon: typeof LayoutDashboard;
+}
+
+const merchantNav: NavItem[] = [
   { href: "/dashboard", labelKey: "nav.dashboard", icon: LayoutDashboard },
   { href: "/inventory", labelKey: "nav.inventory", icon: Package },
   { href: "/sales", labelKey: "nav.sales", icon: ShoppingCart },
   { href: "/orders", labelKey: "nav.orders", icon: ClipboardList },
   { href: "/suppliers", labelKey: "nav.suppliers", icon: Truck },
-] as const;
+];
+
+const adminNav: NavItem[] = [
+  { href: "/admin", label: "Admin", icon: LayoutDashboard },
+  { href: "/dashboard", labelKey: "nav.dashboard", icon: LayoutDashboard },
+  { href: "/inventory", labelKey: "nav.inventory", icon: Package },
+  { href: "/sales", labelKey: "nav.sales", icon: ShoppingCart },
+  { href: "/orders", labelKey: "nav.orders", icon: ClipboardList },
+];
 
 export default function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
@@ -61,7 +76,10 @@ export default function AppShell({ children }: { children: ReactNode }) {
     }
   }, [user]);
 
-  function handleLogout() {
+  async function handleLogout() {
+    try {
+      await api.post("/auth/logout", {});
+    } catch {}
     clearToken();
     router.push("/");
   }
@@ -80,7 +98,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
     }
   }
 
-  const nav = merchantNav;
+  const nav = user?.role === "ADMIN" ? adminNav : merchantNav;
   const displayName = user?.shop?.name || user?.supplier?.name || user?.name || "DukaOS";
 
   return (
@@ -111,6 +129,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
           </div>
           <button
             onClick={() => setSidebarOpen(false)}
+            aria-label="Close navigation menu"
             className="ml-auto lg:hidden text-brand-300 hover:text-white min-h-0"
           >
             <X className="w-4 h-4" />
@@ -119,7 +138,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
 
         {/* Nav */}
         <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
-          {nav.map(({ href, labelKey, icon: Icon }) => (
+          {nav.map(({ href, labelKey, label, icon: Icon }) => (
             <Link
               key={href}
               href={href}
@@ -132,7 +151,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
               )}
             >
               <Icon className="w-4 h-4 flex-shrink-0" />
-              <span>{t(labelKey, lang)}</span>
+              <span>{labelKey ? t(labelKey, lang) : label}</span>
               {href === "/inventory" && lowStockCount > 0 && (
                 <span className="ml-auto bg-red-500 text-white text-xs rounded-full px-1.5 py-0.5 min-w-[20px] text-center">
                   {lowStockCount}
@@ -172,7 +191,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-sm font-medium truncate">{user?.name}</p>
-              <p className="text-brand-300 text-xs">{user?.role === "MERCHANT" ? t("app.merchant", lang) : t("app.supplier", lang)}</p>
+              <p className="text-brand-300 text-xs">{user?.role === "MERCHANT" ? t("app.merchant", lang) : user?.role === "ADMIN" ? "Admin" : t("app.supplier", lang)}</p>
             </div>
           </div>
           <button
@@ -191,6 +210,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
         <header className="lg:hidden sticky top-0 z-10 bg-white border-b border-gray-200 flex items-center gap-3 px-4 h-14">
           <button
             onClick={() => setSidebarOpen(true)}
+            aria-label="Open navigation menu"
             className="text-gray-600 min-h-0"
           >
             <Menu className="w-5 h-5" />
@@ -214,7 +234,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
 
       {/* Bottom nav for mobile */}
       <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex z-10">
-        {nav.slice(0, 5).map(({ href, labelKey, icon: Icon }) => (
+        {nav.slice(0, 5).map(({ href, labelKey, label, icon: Icon }) => (
           <Link
             key={href}
             href={href}
@@ -231,7 +251,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
                 </span>
               )}
             </div>
-            <span className="hidden xs:block">{t(labelKey, lang)}</span>
+            <span className="hidden xs:block">{labelKey ? t(labelKey, lang) : label}</span>
           </Link>
         ))}
       </nav>

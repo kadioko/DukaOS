@@ -64,7 +64,7 @@ async function request<T>(
 
   let res: Response;
   try {
-    res = await fetch(`${baseUrl}${path}`, { ...options, headers });
+    res = await fetch(`${baseUrl}${path}`, { ...options, headers, credentials: "include" });
   } catch {
     throw new Error("Unable to reach the DukaOS server. Confirm the API URL is correct and the backend is online.");
   }

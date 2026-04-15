@@ -87,7 +87,7 @@ export default function SupplierPortal() {
               <p className="text-brand-300 text-xs">Portal ya Wasambazaji</p>
             </div>
           </div>
-          <button onClick={() => { clearToken(); router.push("/"); }}
+          <button onClick={async () => { try { await api.post("/auth/logout", {}); } catch {} clearToken(); router.push("/"); }}
             className="flex items-center gap-1.5 text-brand-300 hover:text-white text-sm min-h-0">
             <LogOut className="w-4 h-4" /> Toka
           </button>

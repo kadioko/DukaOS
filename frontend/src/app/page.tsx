@@ -67,6 +67,8 @@ export default function LoginPage() {
 
       if (data.user.role === "SUPPLIER") {
         router.push("/supplier");
+      } else if (data.user.role === "ADMIN") {
+        router.push("/admin");
       } else {
         router.push("/dashboard");
       }
@@ -216,6 +218,7 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={() => setShowPin(!showPin)}
+                  aria-label={showPin ? "Hide PIN" : "Show PIN"}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 min-h-0"
                 >
                   {showPin ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}

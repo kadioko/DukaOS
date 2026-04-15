@@ -14,6 +14,7 @@
     "test:inventory": "playwright test tests/inventory.flows.spec.ts",
     "test:supplier": "playwright test tests/supplier.portal.spec.ts",
     "test:mocked": "playwright test tests/auth.negative.spec.ts tests/inventory.flows.spec.ts tests/supplier.portal.spec.ts",
+    "test:a11y": "playwright test tests/a11y.spec.ts",
     "test:e2e": "playwright test"
   },
   "dependencies": {
@@ -25,6 +26,7 @@
     "clsx": "^2.1.0"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.10.2",
     "@playwright/test": "^1.52.0",
     "@types/node": "^20.11.0",
     "@types/react": "^18.2.48",

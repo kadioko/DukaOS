@@ -25,6 +25,43 @@ function validatePin(pin) {
   return /^\d{4,8}$/.test(pin);
 }
 
+function getCookieOptions() {
+  const secure = process.env.NODE_ENV === "production";
+  return {
+    httpOnly: true,
+    sameSite: secure ? "none" : "lax",
+    secure,
+    path: "/",
+    maxAge: 30 * 24 * 60 * 60 * 1000,
+  };
+}
+
+function setAuthCookie(res, token) {
+  const options = getCookieOptions();
+  const cookie = [
+    `dukaos_token=${encodeURIComponent(token)}`,
+    `Max-Age=${Math.floor(options.maxAge / 1000)}`,
+    `Path=${options.path}`,
+    `SameSite=${options.sameSite}`,
+    options.httpOnly ? "HttpOnly" : "",
+    options.secure ? "Secure" : "",
+  ].filter(Boolean).join("; ");
+  res.setHeader("Set-Cookie", cookie);
+}
+
+function clearAuthCookie(res) {
+  const options = getCookieOptions();
+  const cookie = [
+    "dukaos_token=",
+    "Max-Age=0",
+    `Path=${options.path}`,
+    `SameSite=${options.sameSite}`,
+    options.httpOnly ? "HttpOnly" : "",
+    options.secure ? "Secure" : "",
+  ].filter(Boolean).join("; ");
+  res.setHeader("Set-Cookie", cookie);
+}
+
 const register = asyncHandler(async (req, res) => {
   const phone = normalizePhone(req.body.phone);
   const pin = String(req.body.pin || "").trim();
@@ -91,6 +128,8 @@ const register = asyncHandler(async (req, res) => {
 
   const token = issueToken(user);
   const profile = await getProfile(user.id);
+  setAuthCookie(res, token);
+  req.audit = { action: "auth.register", resourceType: "user", resourceId: user.id, metadata: { role: user.role } };
   res.status(201).json({ token, user: profile });
 });
 
@@ -122,6 +161,8 @@ const login = asyncHandler(async (req, res) => {
 
   const token = issueToken(user);
   const profile = await getProfile(user.id);
+  setAuthCookie(res, token);
+  req.audit = { action: "auth.login", resourceType: "user", resourceId: user.id, metadata: { role: user.role } };
   res.json({ token, user: profile });
 });
 
@@ -142,7 +183,14 @@ const updateLanguage = asyncHandler(async (req, res) => {
     where: { id: req.user.userId },
     data: { language },
   });
+  req.audit = { action: "auth.language.update", resourceType: "user", resourceId: req.user.userId, metadata: { language } };
   res.json({ message: "Language updated" });
+});
+
+const logout = asyncHandler(async (req, res) => {
+  clearAuthCookie(res);
+  req.audit = { action: "auth.logout", resourceType: "session", resourceId: req.user?.userId || null };
+  res.json({ message: "Logged out" });
 });
 
 function issueToken(user) {
@@ -169,4 +217,4 @@ async function getProfile(userId) {
   });
 }
 
-module.exports = { register, login, me, updateLanguage };
+module.exports = { register, login, me, updateLanguage, logout };

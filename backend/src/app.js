@@ -10,7 +10,10 @@ const orderRoutes = require("./routes/order.routes");
 const supplierRoutes = require("./routes/supplier.routes");
 const dashboardRoutes = require("./routes/dashboard.routes");
 const stockRoutes = require("./routes/stock.routes");
+const adminRoutes = require("./routes/admin.routes");
+const exportRoutes = require("./routes/export.routes");
 const { apiRateLimiter } = require("./middleware/rateLimit");
+const { auditTrail, setAuditContext } = require("./middleware/audit");
 
 const app = express();
 
@@ -43,6 +46,7 @@ const corsOptions = {
     error.status = 403;
     return callback(error);
   },
+  credentials: true,
   methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
   optionsSuccessStatus: 204,
@@ -52,6 +56,8 @@ app.use(cors(corsOptions));
 app.options("*", cors(corsOptions));
 app.use(express.json({ limit: "1mb" }));
 app.use(morgan("dev"));
+app.use(setAuditContext);
+app.use(auditTrail);
 
 app.get("/health", (req, res) => res.json({ status: "ok", service: "DukaOS API" }));
 
@@ -63,6 +69,8 @@ app.use("/api/orders", orderRoutes);
 app.use("/api/suppliers", supplierRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/stock", stockRoutes);
+app.use("/api/admin", adminRoutes);
+app.use("/api/exports", exportRoutes);
 
 app.use((err, req, res, next) => {
   const status = Number(err.status) || 500;
