@@ -93,6 +93,8 @@ model Product {
   unit           String          @default("pcs") // pcs, kg, litre, box, crate
   buyingPrice    Float
   sellingPrice   Float
+  wholesalePrice  Float?
+  wholesaleMinQty Int?
   currentStock   Int             @default(0)
   minimumStock   Int             @default(5) // low-stock threshold
   expiryDate     DateTime?       // null = not set

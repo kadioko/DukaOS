@@ -11,6 +11,8 @@ interface Product {
   unit: string;
   sellingPrice: number;
   buyingPrice: number;
+  wholesalePrice?: number | null;
+  wholesaleMinQty?: number | null;
   currentStock: number;
 }
 
@@ -43,6 +45,7 @@ export default function SalesPage() {
   const lang = useLang();
   const [products, setProducts] = useState<Product[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
+  const [saleMode, setSaleMode] = useState<"RETAIL" | "WHOLESALE">("RETAIL");
   const [paymentMethod, setPaymentMethod] = useState("CASH");
   const [paymentRef, setPaymentRef] = useState("");
   const [search, setSearch] = useState("");
@@ -72,6 +75,13 @@ export default function SalesPage() {
     p.name.toLowerCase().includes(search.toLowerCase())
   );
 
+  function defaultPriceFor(product: Product): number {
+    if (saleMode === "WHOLESALE" && product.wholesalePrice != null) {
+      return product.wholesalePrice;
+    }
+    return product.sellingPrice;
+  }
+
   function addToCart(product: Product) {
     setCart((prev) => {
       const existing = prev.find((i) => i.product.id === product.id);
@@ -82,7 +92,7 @@ export default function SalesPage() {
             : i
         );
       }
-      return [...prev, { product, quantity: 1, unitPrice: product.sellingPrice }];
+      return [...prev, { product, quantity: 1, unitPrice: defaultPriceFor(product) }];
     });
   }
 
@@ -121,6 +131,7 @@ export default function SalesPage() {
           quantity: i.quantity,
           unitPrice: i.unitPrice,
         })),
+        saleMode,
         paymentMethod,
         paymentRef: paymentRef || undefined,
       });
@@ -160,6 +171,31 @@ export default function SalesPage() {
           </div>
         </div>
 
+        {view === "pos" && (
+          <div className="mb-4 flex items-center gap-2">
+            <span className="text-xs text-gray-500 uppercase tracking-wide">{t("sales.priceMode", lang)}</span>
+            <div className="flex gap-1 bg-gray-100 rounded-lg p-1">
+              {(["RETAIL", "WHOLESALE"] as const).map((m) => (
+                <button
+                  key={m}
+                  onClick={() => {
+                    setSaleMode(m);
+                    setCart((prev) => prev.map((i) => ({
+                      ...i,
+                      unitPrice: m === "WHOLESALE" && i.product.wholesalePrice != null
+                        ? i.product.wholesalePrice
+                        : i.product.sellingPrice,
+                    })));
+                  }}
+                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors min-h-0 ${saleMode === m ? "bg-white text-brand-700 shadow-sm" : "text-gray-500"}`}
+                >
+                  {t(m === "RETAIL" ? "sales.retail" : "sales.wholesale", lang)}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         {view === "pos" ? (
           <div className="lg:grid lg:grid-cols-2 lg:gap-6">
             {/* Product picker */}
@@ -178,7 +214,13 @@ export default function SalesPage() {
                       className={`text-left p-3 rounded-xl border transition-all ${inCart ? "border-brand-400 bg-brand-50" : "border-gray-200 bg-white hover:border-brand-300"}`}>
                       <p className="text-sm font-medium text-gray-800 leading-tight">{p.name}</p>
                       <p className="text-xs text-gray-400 mt-0.5">{p.currentStock} {p.unit} {t("dashboard.remaining", lang)}</p>
-                      <p className="text-sm font-bold text-brand-700 mt-1">{formatTZS(p.sellingPrice)}</p>
+                      <p className="text-sm font-bold text-brand-700 mt-1">{formatTZS(defaultPriceFor(p))}</p>
+                      {saleMode === "WHOLESALE" && p.wholesalePrice == null && (
+                        <p className="text-[10px] text-amber-600 mt-0.5">{t("sales.noWholesalePrice", lang)}</p>
+                      )}
+                      {p.wholesalePrice != null && p.wholesaleMinQty != null && (
+                        <p className="text-[10px] text-gray-400 mt-0.5">{t("sales.wholesaleMinHint", lang).replace("{n}", String(p.wholesaleMinQty))}</p>
+                      )}
                       {inCart && (
                         <span className="text-xs bg-brand-600 text-white px-1.5 py-0.5 rounded-full">
                           x{inCart.quantity}

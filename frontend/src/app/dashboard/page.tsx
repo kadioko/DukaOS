@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import AppShell from "@/components/layout/AppShell";
 import { api, formatTZS } from "@/lib/api";
 import { t, useLang } from "@/lib/i18n";
+import Link from "next/link";
 import {
   TrendingUp,
   ShoppingCart,
@@ -103,8 +104,18 @@ export default function DashboardPage() {
   return (
     <AppShell>
       <div className="max-w-5xl mx-auto pb-20 lg:pb-6">
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-4">
           <h1 className="text-xl font-bold text-gray-900">{t("dashboard.title", lang)}</h1>
+          <Link
+            href="/sales"
+            className="inline-flex items-center gap-2 bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold px-4 py-2 rounded-lg shadow-sm transition-colors"
+          >
+            <ShoppingCart className="w-4 h-4" />
+            {t("sales.startSale", lang)}
+          </Link>
+        </div>
+
+        <div className="flex items-center justify-end mb-6">
           <div className="flex gap-1 bg-gray-100 rounded-lg p-1">
             {PERIODS.map((p) => (
               <button

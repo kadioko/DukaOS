@@ -37,7 +37,8 @@ async function list(req, res) {
 
 async function create(req, res) {
   const shopId = await getShopId(req.user.userId);
-  const { items, paymentMethod = "CASH", paymentRef, customerPhone, note } = req.body;
+  const { items, paymentMethod = "CASH", paymentRef, customerPhone, note, saleMode } = req.body;
+  const mode = String(saleMode || "RETAIL").toUpperCase();
 
   if (!items || items.length === 0) {
     return res.status(400).json({ error: "Sale must have at least one item" });
@@ -68,7 +69,10 @@ async function create(req, res) {
   let totalProfit = 0;
   const saleItemsData = items.map((item) => {
     const product = productMap[item.productId];
-    const unitPrice = item.unitPrice || product.sellingPrice;
+    const defaultPrice = mode === "WHOLESALE" && product.wholesalePrice != null
+      ? product.wholesalePrice
+      : product.sellingPrice;
+    const unitPrice = item.unitPrice != null && item.unitPrice !== "" ? Number(item.unitPrice) : defaultPrice;
     const totalPrice = unitPrice * item.quantity;
     const itemProfit = (unitPrice - product.buyingPrice) * item.quantity;
     totalAmount += totalPrice;

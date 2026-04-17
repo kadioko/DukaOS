@@ -22,6 +22,8 @@ interface Product {
   unit: string;
   buyingPrice: number;
   sellingPrice: number;
+  wholesalePrice?: number | null;
+  wholesaleMinQty?: number | null;
   currentStock: number;
   minimumStock: number;
   isActive: boolean;
@@ -62,6 +64,7 @@ export default function InventoryPage() {
   const [adjustProduct, setAdjustProduct] = useState<Product | null>(null);
   const [form, setForm] = useState({
     name: "", sku: "", unit: "pcs", buyingPrice: "", sellingPrice: "",
+    wholesalePrice: "", wholesaleMinQty: "",
     currentStock: "0", minimumStock: "5", supplierId: "",
     expiryDate: "", doesNotExpire: false,
   });
@@ -87,7 +90,7 @@ export default function InventoryPage() {
 
   function openAdd() {
     setEditProduct(null);
-    setForm({ name: "", sku: "", unit: "pcs", buyingPrice: "", sellingPrice: "", currentStock: "0", minimumStock: "5", supplierId: "", expiryDate: "", doesNotExpire: false });
+    setForm({ name: "", sku: "", unit: "pcs", buyingPrice: "", sellingPrice: "", wholesalePrice: "", wholesaleMinQty: "", currentStock: "0", minimumStock: "5", supplierId: "", expiryDate: "", doesNotExpire: false });
     setError("");
     setShowForm(true);
   }
@@ -97,6 +100,8 @@ export default function InventoryPage() {
     setForm({
       name: p.name, sku: p.sku || "", unit: p.unit,
       buyingPrice: String(p.buyingPrice), sellingPrice: String(p.sellingPrice),
+      wholesalePrice: p.wholesalePrice != null ? String(p.wholesalePrice) : "",
+      wholesaleMinQty: p.wholesaleMinQty != null ? String(p.wholesaleMinQty) : "",
       currentStock: String(p.currentStock), minimumStock: String(p.minimumStock),
       supplierId: p.supplier?.id || "",
       expiryDate: p.expiryDate ? p.expiryDate.slice(0, 10) : "",
@@ -117,6 +122,8 @@ export default function InventoryPage() {
       const body = {
         name: form.name, sku: form.sku || undefined, unit: form.unit,
         buyingPrice: Number(form.buyingPrice), sellingPrice: Number(form.sellingPrice),
+        wholesalePrice: form.wholesalePrice === "" ? null : Number(form.wholesalePrice),
+        wholesaleMinQty: form.wholesaleMinQty === "" ? null : Number(form.wholesaleMinQty),
         currentStock: Number(form.currentStock), minimumStock: Number(form.minimumStock),
         supplierId: form.supplierId || undefined,
         doesNotExpire: form.doesNotExpire,
@@ -355,6 +362,23 @@ export default function InventoryPage() {
                   className={INPUT} placeholder="5" />
               </Field>
             </div>
+            {/* Wholesale section */}
+            <div className="border border-gray-200 rounded-lg p-3 space-y-2">
+              <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">{t("inventory.wholesaleSection", lang)}</p>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label={t("inventory.wholesalePriceLabel", lang)}>
+                  <input aria-label={t("inventory.wholesalePriceLabel", lang)} type="number" value={form.wholesalePrice}
+                    onChange={(e) => setForm({ ...form, wholesalePrice: e.target.value })}
+                    className={INPUT} placeholder="2900" />
+                </Field>
+                <Field label={t("inventory.wholesaleMinQtyLabel", lang)}>
+                  <input aria-label={t("inventory.wholesaleMinQtyLabel", lang)} type="number" value={form.wholesaleMinQty}
+                    onChange={(e) => setForm({ ...form, wholesaleMinQty: e.target.value })}
+                    className={INPUT} placeholder="5" min="1" />
+                </Field>
+              </div>
+            </div>
+
             <Field label={t("inventory.supplierLabel", lang)}>
               <select aria-label={t("inventory.supplierLabel", lang)} value={form.supplierId} onChange={(e) => setForm({ ...form, supplierId: e.target.value })} className={INPUT}>
                 <option value="">{t("inventory.selectSupplier", lang)}</option>

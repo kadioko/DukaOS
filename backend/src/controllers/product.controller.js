@@ -57,7 +57,7 @@ async function get(req, res) {
 
 async function create(req, res) {
   const shopId = await getShopId(req.user.userId);
-  const { name, sku, unit, buyingPrice, sellingPrice, currentStock, minimumStock, supplierId, expiryDate, doesNotExpire } = req.body;
+  const { name, sku, unit, buyingPrice, sellingPrice, wholesalePrice, wholesaleMinQty, currentStock, minimumStock, supplierId, expiryDate, doesNotExpire } = req.body;
 
   if (!name || buyingPrice == null || sellingPrice == null) {
     return res.status(400).json({ error: "name, buyingPrice, and sellingPrice are required" });
@@ -70,6 +70,8 @@ async function create(req, res) {
       unit: unit || "pcs",
       buyingPrice: Number(buyingPrice),
       sellingPrice: Number(sellingPrice),
+      wholesalePrice: wholesalePrice != null && wholesalePrice !== "" ? Number(wholesalePrice) : null,
+      wholesaleMinQty: wholesaleMinQty != null && wholesaleMinQty !== "" ? Number(wholesaleMinQty) : null,
       currentStock: Number(currentStock) || 0,
       minimumStock: Number(minimumStock) || 5,
       shopId,
@@ -100,7 +102,7 @@ async function update(req, res) {
   const existing = await prisma.product.findFirst({ where: { id: req.params.id, shopId } });
   if (!existing) return res.status(404).json({ error: "Product not found" });
 
-  const { name, sku, unit, buyingPrice, sellingPrice, minimumStock, supplierId, isActive, expiryDate, doesNotExpire } = req.body;
+  const { name, sku, unit, buyingPrice, sellingPrice, wholesalePrice, wholesaleMinQty, minimumStock, supplierId, isActive, expiryDate, doesNotExpire } = req.body;
 
   const product = await prisma.product.update({
     where: { id: req.params.id },
@@ -110,6 +112,8 @@ async function update(req, res) {
       ...(unit !== undefined && { unit }),
       ...(buyingPrice !== undefined && { buyingPrice: Number(buyingPrice) }),
       ...(sellingPrice !== undefined && { sellingPrice: Number(sellingPrice) }),
+      ...(wholesalePrice !== undefined && { wholesalePrice: wholesalePrice === null || wholesalePrice === "" ? null : Number(wholesalePrice) }),
+      ...(wholesaleMinQty !== undefined && { wholesaleMinQty: wholesaleMinQty === null || wholesaleMinQty === "" ? null : Number(wholesaleMinQty) }),
       ...(minimumStock !== undefined && { minimumStock: Number(minimumStock) }),
       ...(supplierId !== undefined && { supplierId }),
       ...(isActive !== undefined && { isActive }),
