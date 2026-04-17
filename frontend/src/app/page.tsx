@@ -1,8 +1,9 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { api, getFriendlyErrorMessage, setToken } from "@/lib/api";
-import { ShoppingBag, Phone, Lock, Eye, EyeOff, ArrowRight } from "lucide-react";
+import { ShoppingBag, Phone, Lock, Eye, EyeOff, ArrowRight, Store } from "lucide-react";
 import { t, useLang, setLanguage as setAppLanguage } from "@/lib/i18n";
 
 function normalizePhone(value: string): string {
@@ -246,6 +247,14 @@ export default function LoginPage() {
             </button>
           </div>
         </div>
+
+        <Link
+          href="/catalog"
+          className="mt-4 w-full inline-flex items-center justify-center gap-2 bg-white/10 hover:bg-white/20 text-white border border-white/20 backdrop-blur-sm font-semibold py-3 rounded-xl transition-colors"
+        >
+          <Store className="w-4 h-4" />
+          {t("catalog.browse", lang)}
+        </Link>
 
         <p className="text-center text-brand-200 text-xs mt-6">
           DukaOS — Kujenga biashara Tanzania

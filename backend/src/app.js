@@ -12,6 +12,7 @@ const dashboardRoutes = require("./routes/dashboard.routes");
 const stockRoutes = require("./routes/stock.routes");
 const adminRoutes = require("./routes/admin.routes");
 const exportRoutes = require("./routes/export.routes");
+const publicRoutes = require("./routes/public.routes");
 const { apiRateLimiter } = require("./middleware/rateLimit");
 const { auditTrail, setAuditContext } = require("./middleware/audit");
 
@@ -62,6 +63,7 @@ app.use(auditTrail);
 app.get("/health", (req, res) => res.json({ status: "ok", service: "DukaOS API" }));
 
 app.use("/api", apiRateLimiter);
+app.use("/api/public", publicRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/sales", saleRoutes);
