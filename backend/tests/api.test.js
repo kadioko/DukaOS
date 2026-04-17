@@ -5,6 +5,9 @@ const PROD_BASE_URL = process.env.SMOKE_BASE_URL || "https://dukaos-production.u
 const LOGIN_PHONE = process.env.SMOKE_TEST_PHONE || "+255700000003";
 const LOGIN_PIN = process.env.SMOKE_TEST_PIN || "1234";
 
+let cachedToken = null;
+let loginPromise = null;
+
 async function request(path, options = {}) {
   const response = await fetch(`${PROD_BASE_URL}${path}`, options);
   const contentType = response.headers.get("content-type") || "";
@@ -14,15 +17,26 @@ async function request(path, options = {}) {
 }
 
 async function login() {
-  const result = await request("/api/auth/login", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ phone: LOGIN_PHONE, pin: LOGIN_PIN }),
-  });
+  if (cachedToken) {
+    return cachedToken;
+  }
 
-  assert.equal(result.response.status, 200, `Login failed: ${result.response.status} ${JSON.stringify(result.payload)}`);
-  assert.ok(result.payload?.token, "Expected login token");
-  return result.payload.token;
+  if (!loginPromise) {
+    loginPromise = (async () => {
+      const result = await request("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: LOGIN_PHONE, pin: LOGIN_PIN }),
+      });
+
+      assert.equal(result.response.status, 200, `Login failed: ${result.response.status} ${JSON.stringify(result.payload)}`);
+      assert.ok(result.payload?.token, "Expected login token");
+      cachedToken = result.payload.token;
+      return cachedToken;
+    })();
+  }
+
+  return loginPromise;
 }
 
 test("health endpoint returns ok", async () => {
