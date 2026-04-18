@@ -92,4 +92,45 @@ async function sendWhatsAppMessage(toPhone, message) {
   return { sent: true, data: await response.json() };
 }
 
-module.exports = { buildWhatsAppOrderMessage, sendWhatsAppMessage, formatTZS };
+function buildCustomerOrderMessage(order, shop) {
+  const date = new Date(order.createdAt).toLocaleDateString("sw-TZ", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+
+  const itemLines = order.items
+    .map((item) => {
+      const name = item.product?.name || `Bidhaa #${item.productId.slice(-6)}`;
+      const unit = item.product?.unit || "pcs";
+      const tier = item.pricingTier === "WHOLESALE" ? " (Jumla)" : "";
+      return `  • ${name}: *${item.quantity} ${unit}*${tier} — ${formatTZS(item.unitPrice * item.quantity)}`;
+    })
+    .join("\n");
+
+  const message = [
+    `🛒 *AGIZO JIPYA — ${shop.name}*`,
+    `📅 Tarehe: ${date}`,
+    `🔢 Nambari: #${order.id.slice(-8).toUpperCase()}`,
+    ``,
+    `👤 Mteja: *${order.customerName}*`,
+    `📱 Simu: ${order.customerPhone}`,
+    ``,
+    `*Bidhaa Zilizoombwa:*`,
+    itemLines,
+    ``,
+    `💰 Jumla: *${formatTZS(order.totalAmount)}*`,
+    order.note ? `📝 Maelezo: ${order.note}` : null,
+    ``,
+    `Tafadhali wasiliana na mteja kuthibitisha agizo. 🙏`,
+  ]
+    .filter((line) => line !== null)
+    .join("\n");
+
+  const shopPhone = shop.user?.phone?.replace(/\D/g, "") || shop.phone?.replace(/\D/g, "");
+  const whatsappUrl = shopPhone ? `https://wa.me/${shopPhone}?text=${encodeURIComponent(message)}` : null;
+
+  return { message, whatsappUrl };
+}
+
+module.exports = { buildWhatsAppOrderMessage, buildCustomerOrderMessage, sendWhatsAppMessage, formatTZS };

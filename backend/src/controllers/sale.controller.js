@@ -37,8 +37,9 @@ async function list(req, res) {
 
 async function create(req, res) {
   const shopId = await getShopId(req.user.userId);
-  const { items, paymentMethod = "CASH", paymentRef, customerPhone, note, saleMode } = req.body;
-  const mode = String(saleMode || "RETAIL").toUpperCase();
+  const { items, paymentMethod = "CASH", paymentRef, customerPhone, note, saleMode, channel } = req.body;
+  const pricingTier = String(saleMode || "RETAIL").toUpperCase() === "WHOLESALE" ? "WHOLESALE" : "RETAIL";
+  const saleChannel = String(channel || "POS").toUpperCase() === "ONLINE" ? "ONLINE" : "POS";
 
   if (!items || items.length === 0) {
     return res.status(400).json({ error: "Sale must have at least one item" });
@@ -69,7 +70,7 @@ async function create(req, res) {
   let totalProfit = 0;
   const saleItemsData = items.map((item) => {
     const product = productMap[item.productId];
-    const defaultPrice = mode === "WHOLESALE" && product.wholesalePrice != null
+    const defaultPrice = pricingTier === "WHOLESALE" && product.wholesalePrice != null
       ? product.wholesalePrice
       : product.sellingPrice;
     const unitPrice = item.unitPrice != null && item.unitPrice !== "" ? Number(item.unitPrice) : defaultPrice;
@@ -94,6 +95,8 @@ async function create(req, res) {
         profit: totalProfit,
         paymentMethod: paymentMethod.toUpperCase(),
         paymentRef,
+        channel: saleChannel,
+        pricingTier,
         customerPhone,
         note,
         shopId,

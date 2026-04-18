@@ -38,6 +38,16 @@ enum OrderStatus {
   CANCELLED
 }
 
+enum SaleChannel {
+  POS
+  ONLINE
+}
+
+enum PricingTier {
+  RETAIL
+  WHOLESALE
+}
+
 model User {
   id           String    @id @default(cuid())
   phone        String    @unique
@@ -62,11 +72,12 @@ model Shop {
   category    String    @default("general") // grocery, pharmacy, beauty, bar, general
   userId      String    @unique
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  products    Product[]
-  sales       Sale[]
-  orders      Order[]
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  products        Product[]
+  sales           Sale[]
+  orders          Order[]
+  customerOrders  CustomerOrder[]
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
   @@map("shops")
 }
@@ -104,10 +115,11 @@ model Product {
   shop           Shop            @relation(fields: [shopId], references: [id], onDelete: Cascade)
   supplierId     String?
   supplier       Supplier?       @relation(fields: [supplierId], references: [id], onDelete: SetNull)
-  saleItems      SaleItem[]
-  orderItems     OrderItem[]
-  stockMovements StockMovement[]
-  createdAt      DateTime        @default(now())
+  saleItems           SaleItem[]
+  orderItems          OrderItem[]
+  customerOrderItems  CustomerOrderItem[]
+  stockMovements      StockMovement[]
+  createdAt           DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
 
   @@map("products")
@@ -131,6 +143,8 @@ model Sale {
   profit          Float         @default(0)
   paymentMethod   PaymentMethod @default(CASH)
   paymentRef      String?       // M-Pesa transaction reference
+  channel         SaleChannel   @default(POS)
+  pricingTier     PricingTier   @default(RETAIL)
   customerPhone   String?
   note            String?
   shopId          String
@@ -181,6 +195,35 @@ model OrderItem {
   order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
   @@map("order_items")
+}
+
+model CustomerOrder {
+  id            String              @id @default(cuid())
+  customerName  String
+  customerPhone String
+  note          String?
+  status        OrderStatus         @default(PENDING)
+  totalAmount   Float               @default(0)
+  shopId        String
+  shop          Shop                @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  items         CustomerOrderItem[]
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  @@map("customer_orders")
+}
+
+model CustomerOrderItem {
+  id          String        @id @default(cuid())
+  quantity    Int
+  unitPrice   Float
+  pricingTier PricingTier   @default(RETAIL)
+  productId   String
+  product     Product       @relation(fields: [productId], references: [id])
+  orderId     String
+  order       CustomerOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@map("customer_order_items")
 }
 
 model AuditLog {

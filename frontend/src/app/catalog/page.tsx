@@ -142,6 +142,9 @@ export default function CatalogPage() {
                   <Store className="w-4 h-4 text-brand-600" />
                   <h2 className="font-semibold text-gray-900 text-sm">{shop.name}</h2>
                   <span className="text-xs text-gray-400">• {shop.location}</span>
+                  <Link href={`/catalog/${shop.id}`} className="ml-auto text-xs font-semibold text-brand-700 hover:underline whitespace-nowrap">
+                    {t("catalog.viewShop", lang)}
+                  </Link>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                   {items.map((p) => (
