@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import AppShell from "@/components/layout/AppShell";
-import { api, formatTZS, getCurrentSession } from "@/lib/api";
+import { api, formatTZS, getCurrentSession, selectedBranchId } from "@/lib/api";
 import { Plus, X, ShoppingCart, Check, Minus, Search, Clock, WifiOff, RefreshCw, Trash2, ScanLine, MessageCircle, RotateCcw, ReceiptText, AlertTriangle, PackagePlus } from "lucide-react";
 import { t, useLang } from "@/lib/i18n";
 import { useToast } from "@/components/ui/Toast";
@@ -46,6 +46,7 @@ interface SaleRecord {
 }
 
 interface PendingSale {
+  branchId?: string;
   id: string;
   createdAt: string;
   total: number;
@@ -274,6 +275,10 @@ export default function SalesPage() {
       const remaining: PendingSale[] = [];
       const events: SyncEvent[] = [];
       for (const sale of pending) {
+        if ((sale.branchId || "") !== selectedBranchId()) {
+          remaining.push(sale);
+          continue;
+        }
         try {
           await api.post("/sales", sale.payload, lang);
           events.push({
@@ -582,7 +587,7 @@ export default function SalesPage() {
       if (canQueue) {
         const queued = [
           ...readPendingSales(),
-          { id: clientReference, createdAt: new Date().toISOString(), total, attempts: 0, payload },
+          { id: clientReference, branchId: selectedBranchId(), createdAt: new Date().toISOString(), total, attempts: 0, payload },
         ];
         const queuedEvent = {
           id: newLocalId(),

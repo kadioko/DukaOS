@@ -168,6 +168,7 @@ enum FarmProductionType {
 }
 
 model User {
+  branchTransfers BranchTransfer[]
   id        String     @id @default(cuid())
   phone     String     @unique
   pin       String
@@ -185,13 +186,20 @@ model User {
 }
 
 model Shop {
+  businessTransfers BranchTransfer[] @relation("TransferBusiness")
+  outgoingTransfers BranchTransfer[] @relation("TransferSourceShop")
+  incomingTransfers BranchTransfer[] @relation("TransferTargetShop")
   id                       String                  @id @default(cuid())
   name                     String
   location                 String
   district                 String?
   category                 String                  @default("general") // grocery, pharmacy, beauty, bar, restaurant, general
-  userId                   String                  @unique
-  user                     User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId                   String?                 @unique
+  user                     User?                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parentShopId             String?
+  parentShop               Shop?                   @relation("BusinessBranches", fields: [parentShopId], references: [id], onDelete: Restrict)
+  branches                 Shop[]                  @relation("BusinessBranches")
+  branchArchived           Boolean                 @default(false)
   products                 Product[]
   sales                    Sale[]
   orders                   Order[]
@@ -200,7 +208,9 @@ model Shop {
   expenses                 Expense[]
   recurringExpenses        RecurringExpense[]
   staffMembers             StaffMember[]
+  additionalBranchSlots    Int                     @default(0)
   subscriptionPayments     SubscriptionPayment[]
+  subscriptionCheckouts    SubscriptionCheckout[]
   offlineSyncEvents        OfflineSyncEvent[]
   assistantActions         AssistantAction[]
   pushSubscriptions        PushSubscription[]
@@ -251,6 +261,7 @@ model Shop {
   createdAt                DateTime                @default(now())
   updatedAt                DateTime                @updatedAt
 
+  @@index([parentShopId, branchArchived])
   @@map("shops")
 }
 
@@ -304,7 +315,31 @@ model PinResetOtp {
   @@map("pin_reset_otps")
 }
 
+model SubscriptionCheckout {
+  extraBranches Int @default(0)
+  kind String @default("RENEWAL")
+  expectedEndsAt DateTime?
+  id String @id @default(cuid())
+  shopId String
+  shop Shop @relation(fields: [shopId], references: [id], onDelete: Restrict)
+  requestKey String @unique
+  activeShopKey String? @unique
+  providerId String? @unique
+  providerUserId String?
+  plan String
+  amount Int
+  phone String
+  status String @default("PENDING")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([shopId, createdAt])
+  @@index([status, updatedAt])
+  @@map("subscription_checkouts")
+}
+
 model SubscriptionPayment {
+  extraBranches       Int       @default(0)
+  kind                String    @default("RENEWAL")
   id                  String    @id @default(cuid())
   shopId              String
   shop                Shop      @relation(fields: [shopId], references: [id], onDelete: Cascade)
@@ -723,10 +758,12 @@ model QuotationReminder {
 }
 
 model Product {
+  outgoingTransfers BranchTransfer[] @relation("TransferSourceProduct")
+  incomingTransfers BranchTransfer[] @relation("TransferTargetProduct")
   id                       String                  @id @default(cuid())
   name                     String
   sku                      String?
-  barcode                  String?                 @unique
+  barcode                  String?
   barcodeType              BarcodeType?
   barcodeGenerated         Boolean                 @default(false)
   barcodeCreatedAt         DateTime?
@@ -768,7 +805,7 @@ model Product {
 
   @@unique([shopId, supplierCatalogProductId])
   @@index([shopId, isActive])
-  @@index([shopId, barcode])
+  @@unique([shopId, barcode])
   @@map("products")
 }
 
@@ -835,6 +872,30 @@ model SupplierCatalogProduct {
 
   @@index([supplierId, isAvailable])
   @@map("supplier_catalog_products")
+}
+
+model BranchTransfer {
+  business Shop @relation("TransferBusiness", fields: [businessId], references: [id], onDelete: Restrict)
+  sourceShop Shop @relation("TransferSourceShop", fields: [sourceShopId], references: [id], onDelete: Restrict)
+  targetShop Shop @relation("TransferTargetShop", fields: [targetShopId], references: [id], onDelete: Restrict)
+  sourceProduct Product @relation("TransferSourceProduct", fields: [sourceProductId], references: [id], onDelete: Restrict)
+  targetProduct Product @relation("TransferTargetProduct", fields: [targetProductId], references: [id], onDelete: Restrict)
+  creator User @relation(fields: [createdBy], references: [id], onDelete: Restrict)
+  id String @id @default(cuid())
+  businessId String
+  requestKey String
+  sourceShopId String
+  targetShopId String
+  sourceProductId String
+  targetProductId String
+  quantity Int
+  unitCost Int
+  createdBy String
+  createdAt DateTime @default(now())
+
+  @@unique([businessId, requestKey])
+  @@index([businessId, createdAt])
+  @@map("branch_transfers")
 }
 
 model StockMovement {

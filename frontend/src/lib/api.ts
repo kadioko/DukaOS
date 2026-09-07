@@ -3,6 +3,15 @@ import { t, type Lang } from "@/lib/i18n";
 const PROD_API_URL = "https://dukapilotproduction.up.railway.app/api";
 const BROWSER_API_PATH = "/_api";
 const REQUEST_TIMEOUT_MS = 20000;
+export const BRANCH_KEY = "dukapilot_selected_branch";
+export function selectedBranchId() { return typeof window === "undefined" ? "" : sessionStorage.getItem(BRANCH_KEY) || ""; }
+export function switchBranch(id: string) {
+  const pending = JSON.parse(localStorage.getItem("dukapilot_pending_sales") || "[]");
+  if (pending.length) throw new Error("Sync or resolve pending offline sales before switching branches.");
+  sessionStorage.setItem(BRANCH_KEY, id);
+  invalidateCurrentSession();
+  window.location.assign("/dashboard");
+}
 
 export interface ApiErrorDetail {
   row?: number;
@@ -11,12 +20,14 @@ export interface ApiErrorDetail {
 }
 
 export class ApiError extends Error {
+  status?: number;
   code?: string;
   details?: ApiErrorDetail[];
 
-  constructor(message: string, payload?: { code?: string; details?: ApiErrorDetail[] }) {
+  constructor(message: string, payload?: { code?: string; details?: ApiErrorDetail[] }, status?: number) {
     super(message);
     this.name = "ApiError";
+    this.status = status;
     this.code = payload?.code;
     this.details = payload?.details;
   }
@@ -120,9 +131,11 @@ async function request<T>(
   _isRetry = false
 ): Promise<T> {
   const baseUrl = getBaseUrl();
+  if (["/auth/login", "/auth/logout", "/auth/register"].includes(path) && typeof window !== "undefined") sessionStorage.removeItem(BRANCH_KEY);
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     "X-DukaPilot-Language": lang,
+    ...(selectedBranchId() ? { "X-DukaPilot-Branch": selectedBranchId() } : {}),
     ...(options.headers as Record<string, string>),
   };
 
@@ -162,7 +175,7 @@ async function request<T>(
         ? payload || `Request failed with status ${res.status}`
         : payload?.error || `Request failed with status ${res.status}`;
 
-    throw new ApiError(getFriendlyErrorMessage(rawMessage, lang), typeof payload === "string" ? undefined : payload);
+    throw new ApiError(getFriendlyErrorMessage(rawMessage, lang), typeof payload === "string" ? undefined : payload, res.status);
   }
 
   if (!isJson) {
@@ -201,7 +214,7 @@ export function invalidateCurrentSession() {
 }
 
 export async function downloadFile(path: string, filename: string, lang: Lang = "en") {
-  const headers: Record<string, string> = {};
+  const headers: Record<string, string> = selectedBranchId() ? { "X-DukaPilot-Branch": selectedBranchId() } : {};
 
   const res = await fetch(`${getBaseUrl()}${path}`, { headers, credentials: "include" });
   if (!res.ok) {
@@ -240,6 +253,7 @@ export function hasSessionHint(): boolean {
 export function clearToken() {
   invalidateCurrentSession();
   if (typeof window !== "undefined") {
+    sessionStorage.removeItem(BRANCH_KEY);
     localStorage.removeItem(SESSION_HINT_KEY);
     localStorage.removeItem("dukapilot_token");
     localStorage.removeItem("dukaos_token");

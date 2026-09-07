@@ -45,6 +45,9 @@ const getSettings = asyncHandler(async (req, res) => {
     },
   });
   if (!user) return res.status(404).json({ error: "User not found" });
+  if (user.shop && req.user.resolvedShopId && user.shop.id !== req.user.resolvedShopId) {
+    user.shop = await prisma.shop.findUnique({ where: { id: req.user.resolvedShopId }, select: { id: true, name: true, location: true, district: true, category: true, isCatalogPublished: true } });
+  }
   res.json({ settings: user });
 });
 

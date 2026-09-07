@@ -12,7 +12,7 @@ const generate = asyncHandler(async (req, res) => {
   if (!shop?.barcodeGenerationEnabled) return res.status(403).json({ error: "Barcode generation is disabled in settings" });
   for (let attempt = 0; attempt < 3; attempt += 1) {
     const barcode = await prisma.$transaction((tx) => nextInternalBarcode(tx));
-    const exists = await prisma.product.findUnique({ where: { barcode }, select: { id: true } });
+    const exists = await prisma.product.findUnique({ where: { shopId_barcode: { shopId, barcode } }, select: { id: true } });
     if (!exists) return res.json({ barcode, barcodeType: "INTERNAL" });
   }
   return res.status(409).json({ error: "Could not reserve a barcode. Please try again." });

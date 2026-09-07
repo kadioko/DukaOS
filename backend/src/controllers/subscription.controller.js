@@ -1,6 +1,7 @@
 const prisma = require("../lib/prisma");
 const { isSubscriptionActive } = require("../middleware/subscription");
-const { getShopIdForUser } = require("../lib/shopAccess");
+const { getBillingShopIdForUser: getShopIdForUser } = require("../lib/shopAccess");
+const { priceSubscription, validateBranchCapacity } = require("../lib/subscriptionPricing");
 
 function asyncHandler(fn) {
   return (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
@@ -86,13 +87,15 @@ const getStatus = asyncHandler(async (req, res) => {
   const shopId = await getShopIdForUser(req.user);
   const shop = await prisma.shop.findUnique({
     where: { id: shopId },
-    select: { id: true, plan: true, trialEndsAt: true, subscriptionEndsAt: true, isActive: true, createdAt: true },
+    select: { id: true, plan: true, trialEndsAt: true, subscriptionEndsAt: true, isActive: true, createdAt: true, additionalBranchSlots: true },
   });
   if (!shop) return res.status(404).json({ error: "Shop not found" });
 
   const snapshot = subscriptionSnapshot(shop);
 
   res.json({
+    extraBranches: shop.additionalBranchSlots,
+    monthlyAmount: shop.plan === "PRO" ? 35000 + 10000 * shop.additionalBranchSlots : 15000,
     plan: shop.plan,
     isActive: shop.isActive,
     trialEndsAt: shop.trialEndsAt,
@@ -115,7 +118,7 @@ const adminListSubscriptions = asyncHandler(async (req, res) => {
   const requestedPage = Math.max(1, Number(req.query.page) || 1);
   const now = new Date();
 
-  const baseWhere = {};
+  const baseWhere = { parentShopId: null };
   if (["FREE_TRIAL", "BASIC", "PRO"].includes(plan)) baseWhere.plan = plan;
   if (search) {
     baseWhere.OR = [
@@ -145,6 +148,7 @@ const adminListSubscriptions = asyncHandler(async (req, res) => {
       subscriptionEndsAt: true,
       isActive: true,
       onboardingStatus: true,
+      additionalBranchSlots: true,
       lastContactedAt: true,
       followUpNotes: true,
       createdAt: true,
@@ -382,18 +386,28 @@ const adminRecordPayment = asyncHandler(async (req, res) => {
 
   const now = new Date();
   const base = existing.subscriptionEndsAt && existing.subscriptionEndsAt > now ? existing.subscriptionEndsAt : now;
-  const subscriptionEndsAt = addMonthsClamped(base, months);
+  let subscriptionEndsAt = addMonthsClamped(base, months);
 
   let payment;
   let shop;
   try {
-    [payment, shop] = await prisma.$transaction([
-      prisma.subscriptionPayment.create({
+    [payment, shop] = await prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM shops WHERE id = ${shopId} FOR UPDATE`;
+      const lockedShop = await tx.shop.findUnique({ where: { id: shopId } });
+      if (lockedShop.parentShopId) throw Object.assign(new Error("Record payment against the main business, not an individual branch"), { status: 400 });
+      const quote = priceSubscription(lockedShop, { ...req.body, plan, months });
+      await validateBranchCapacity(tx, shopId, plan, quote.extraBranches);
+      if ((quote.extraBranches > 0 || quote.kind === "BRANCH_ADDON") && amount < quote.amount) throw Object.assign(new Error(`Payment must cover TZS ${quote.amount}`), { status: 400 });
+      const renewalBase = lockedShop.subscriptionEndsAt && lockedShop.subscriptionEndsAt > now ? lockedShop.subscriptionEndsAt : now;
+      subscriptionEndsAt = quote.kind === "BRANCH_ADDON" ? lockedShop.subscriptionEndsAt : addMonthsClamped(renewalBase, months);
+      const recorded = await tx.subscriptionPayment.create({
       data: {
         shopId,
         plan,
         amount,
-        months,
+        months: quote.months,
+        kind: quote.kind,
+        extraBranches: quote.extraBranches,
         method,
         reference,
         normalizedReference,
@@ -404,13 +418,14 @@ const adminRecordPayment = asyncHandler(async (req, res) => {
         reviewedBy: req.user.userId,
         reviewedAt: now,
       },
-      }),
-      prisma.shop.update({
+      });
+      const updated = await tx.shop.update({
       where: { id: shopId },
-      data: { plan, subscriptionEndsAt, isActive: true },
+      data: { plan, subscriptionEndsAt, isActive: true, additionalBranchSlots: quote.extraBranches },
       select: { id: true, name: true, plan: true, trialEndsAt: true, subscriptionEndsAt: true, isActive: true },
-      }),
-    ]);
+      });
+      return [recorded, updated];
+    });
   } catch (error) {
     if (error?.code !== "P2002") throw error;
     const existingPayment = await prisma.subscriptionPayment.findFirst({

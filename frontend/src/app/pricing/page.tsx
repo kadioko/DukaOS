@@ -70,6 +70,7 @@ const plans: Plan[] = [
     badge: { sw: "Bora Zaidi", en: "Best Value" },
     features: [
       { sw: "Kila kitu katika Msingi", en: "Everything in Basic" },
+      { sw: "Maeneo 4 pamoja na duka kuu; TZS 10,000 kwa eneo la ziada kwa mwezi", en: "4 locations including the main shop; TZS 10,000 per extra location/month" },
       { sw: "Akaunti za wafanyakazi zisizo na kikomo na ruhusa", en: "Unlimited staff accounts and permissions" },
       { sw: "Ufuatiliaji wa wafanyakazi na historia ya hatua za AI", en: "Staff oversight and AI action history" },
       { sw: "Vipaumbele vya kila siku kutoka kwa AI", en: "AI priority workflows for daily actions" },
@@ -115,7 +116,7 @@ const faqs = [
   },
   {
     q: { sw: "Malipo yanafanywa vipi?", en: "How do I pay?" },
-    a: { sw: "Kwanza tumia M-Pesa Lipa Number 52806296 jina Necuva Group Limited. Pili tumia Mix by Yas Lipa Number 18214626 jina Necuva. Au tuma pesa 0743910580, kisha weka reference au tuma WhatsApp.", en: "First use M-Pesa Lipa Number 52806296, name Necuva Group Limited. Second use Mix by Yas Lipa Number 18214626, name Necuva. Or send money to 0743910580, then submit the reference or WhatsApp proof." },
+    a: { sw: "Tumia M-Pesa 52806296, Mix by Yas 18214626, AzamPesa 293726045, au Selcom 7006 3589. Jina ni Necuva Group Limited isipokuwa Mix by Yas ni Necuva. Au tuma pesa 0743910580, kisha weka reference au tuma WhatsApp.", en: "Use M-Pesa 52806296, Mix by Yas 18214626, AzamPesa 293726045, or Selcom 7006 3589. Recipient name is Necuva Group Limited except Mix by Yas, which is Necuva. Or send money to 0743910580, then submit the reference or WhatsApp proof." },
   },
   {
     q: { sw: "Ninaweza kubadilisha mpango?", en: "Can I upgrade or downgrade?" },
@@ -332,8 +333,13 @@ export default function PricingPage() {
                 <p className="font-bold text-gray-950">2. Mix by Yas Lipa Number: 18214626</p>
                 <p className="text-gray-600">{lang === "sw" ? "Jina" : "Name"}: Necuva</p>
               </div>
+              <div className="rounded-lg border border-green-100 bg-green-50 p-3">
+                <p className="font-bold text-gray-950">3. AzamPesa Lipa Number: 293726045</p>
+                <p className="font-bold text-gray-950">4. Selcom Lipa Number: 7006 3589</p>
+                <p className="text-gray-600">{lang === "sw" ? "Jina" : "Name"}: Necuva Group Limited</p>
+              </div>
               <div className="rounded-xl border border-gray-100 bg-gray-50 p-3">
-                <p className="font-bold text-gray-950">3. {lang === "sw" ? "Tuma pesa" : "Send money"}: 0743910580</p>
+                <p className="font-bold text-gray-950">4. {lang === "sw" ? "Tuma pesa" : "Send money"}: 0743910580</p>
                 <p className="text-gray-600">{lang === "sw" ? "Weka reference au tuma ujumbe WhatsApp 0743910580." : "Submit the reference or send a WhatsApp message to 0743910580."}</p>
               </div>
             </div>

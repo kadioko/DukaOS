@@ -3,7 +3,7 @@ const { getShopIdForUser } = require("./shopAccess");
 
 const PLAN_FEATURES = {
   BASIC: new Set(["CORE", "EXPORTS", "STAFF"]),
-  PRO: new Set(["CORE", "EXPORTS", "STAFF", "ASSISTANT"]),
+  PRO: new Set(["CORE", "EXPORTS", "STAFF", "ASSISTANT", "BRANCHES"]),
 };
 
 function activePlan(shop, now = new Date()) {
@@ -15,7 +15,7 @@ function activePlan(shop, now = new Date()) {
 
 function canUseFeature(shop, feature, now = new Date()) {
   const plan = activePlan(shop, now);
-  if (plan === "FREE_TRIAL") return true;
+  if (plan === "FREE_TRIAL") return feature !== "BRANCHES";
   return Boolean(plan && PLAN_FEATURES[plan]?.has(feature));
 }
 
@@ -24,6 +24,7 @@ function featureSnapshot(shop) {
     staff: canUseFeature(shop, "STAFF"),
     assistant: canUseFeature(shop, "ASSISTANT"),
     exports: canUseFeature(shop, "EXPORTS"),
+    branches: canUseFeature(shop, "BRANCHES"),
   };
 }
 
@@ -58,4 +59,8 @@ function requireAssistantAccess(req, res, next) {
   });
 }
 
-module.exports = { activePlan, canUseFeature, featureSnapshot, requireFeature, requireAssistantAccess };
+function branchLimit(shop) {
+  return activePlan(shop) === "PRO" ? 4 + Math.max(0, Number(shop.additionalBranchSlots) || 0) : 1;
+}
+
+module.exports = { activePlan, canUseFeature, featureSnapshot, branchLimit, requireFeature, requireAssistantAccess };

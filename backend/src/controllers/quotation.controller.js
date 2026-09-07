@@ -212,8 +212,8 @@ async function quotationSettings(tx, shopId) {
     create: { shopId },
     update: {},
   });
-  const shop = await tx.shop.findUnique({ where: { id: shopId }, select: { name: true, location: true, district: true, user: { select: { phone: true } } } });
-  return { ...settings, business: { name: shop.name, location: shop.location, district: shop.district, phone: shop.user?.phone || null } };
+  const shop = await tx.shop.findUnique({ where: { id: shopId }, select: { name: true, location: true, district: true, user: { select: { phone: true } }, parentShop: { select: { user: { select: { phone: true } } } } } });
+  return { ...settings, business: { name: shop.name, location: shop.location, district: shop.district, phone: shop.user?.phone || shop.parentShop?.user?.phone || null } };
 }
 
 function formatQuotationNumber(settings, sequence) {

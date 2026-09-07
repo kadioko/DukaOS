@@ -7,6 +7,10 @@
 
 ## Why DukaPilot
 
+Subscription payment paths and nTZS launch requirements are documented in
+[Subscription payments](docs/subscription-payments.md). Online checkout is disabled
+until provider verification and payment acceptance tests are complete.
+
 Tanzania has over **1 million informal operators** in Dar es Salaam alone, with wholesale/retail as the single largest segment. These merchants lose money every day from:
 
 - Stockouts they never saw coming
@@ -29,7 +33,7 @@ DukaPilot starts as **software + payments + procurement**, then layers working-c
 - **Email:** Mailtrap for outbound app email; ImprovMX for inbound forwarding on `dukapilot.com`
 - **Error monitoring:** Backend Sentry alerts are live; see [docs/SENTRY_MONITORING.md](./docs/SENTRY_MONITORING.md)
 - **Launch playbook:** [docs/LAUNCH_PLAYBOOK.md](./docs/LAUNCH_PLAYBOOK.md)
-- **Shop operations:** [docs/OPERATIONS_UPGRADE.md](./docs/OPERATIONS_UPGRADE.md) - Daily Close, Receive Stock, receipt sharing/printing, QR ordering, and the multi-branch roadmap
+- **Shop operations:** [docs/OPERATIONS_UPGRADE.md](./docs/OPERATIONS_UPGRADE.md) - Daily Close, Receive Stock, receipt sharing/printing, QR ordering, and branch operations
 - **Restaurant and bar guide:** [docs/RESTAURANT_AND_BAR_GUIDE.md](./docs/RESTAURANT_AND_BAR_GUIDE.md) - Ingredient receiving, food preparation batches, yield/waste, portion costing, and packaged-drink stock
 - **Farm Operations:** [docs/FARM_OPERATIONS.md](./docs/FARM_OPERATIONS.md) - Category-gated poultry and livestock groups, production batches, output packing, cash rules, staff access, and farm AI boundaries
 - **Quotations:** [docs/QUOTATIONS.md](./docs/QUOTATIONS.md) - Service/project estimates, privacy, accounting rules, deployment checks, and the live demo quotation pipeline
@@ -291,7 +295,7 @@ User ──────── Shop ──────────── Product 
 **Core models:**
 
 - `User` — merchant, supplier, or admin; identified by phone + PIN
-- `Shop` — one live shop per merchant; has name, location, district, category, and published catalog settings. Multi-branch is intentionally a future Pro roadmap.
+- `Shop` — an operational location; the original shop owns the subscription and Pro can add child locations. See [branch setup and release checks](docs/BRANCHES.md). Pro includes four total locations; additional locations cost TZS 10,000/month.
 - `Supplier` — can optionally have a User account (supplier portal)
 - `Product` — SKU, buying/selling/wholesale price, stock level, minimum threshold, expiry date
 - `Sale` + `SaleItem` — each sale records profit per line item; supports POS and ONLINE channels

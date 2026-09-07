@@ -37,7 +37,7 @@
 3. Validate Daily Close and Receive Stock with 20-30 active single-shop merchants before expanding the accounting model.
 4. Rank AI stock actions by recent sales velocity and margin contribution, not only stock level.
 5. Decide whether expired products should be hidden in POS or shown as blocked with a clear explanation.
-6. Keep multi-branch as a Pro roadmap until real merchants show the branch, transfer, and reporting workflows they need.
+6. Test the live Pro branch, transfer, and combined-report workflows with real multi-location merchants before adding approvals, in-transit stock, or more complex consolidated accounting.
 
 ## Next: usability polish
 

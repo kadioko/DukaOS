@@ -120,4 +120,6 @@ The migration is additive: it creates `customers`, `services`, quotation tables,
 - Customer signatures are text confirmation today; a drawn signature/image capture can be added later.
 - Email sharing is recorded as a share method, but sending mail depends on a future transactional email provider.
 - Service catalogue management is API-backed in this release; saved services can be created through `POST /api/quotations/services`. A dedicated catalogue screen is a sensible next small UX iteration.
-- Quotes are shop-scoped. Branch-level reporting is reserved for the future multi-branch architecture.
+- Quotes are location-scoped. On Pro, each branch keeps its own quotation records;
+  the owner can use Branches for a combined sales/profit/expense view. Quotation
+  pipeline consolidation is a future reporting enhancement.

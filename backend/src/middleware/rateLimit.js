@@ -103,4 +103,13 @@ const otpRequestRateLimiter = rateLimit({
   message: { error: "Too many PIN reset requests. Please wait 15 minutes and try again." },
 });
 
-module.exports = { apiRateLimiter, authRateLimiter, publicRateLimiter, publicEventRateLimiter, publicOrderRateLimiter, otpRequestRateLimiter, statusRateLimiter };
+const subscriptionPaymentLimiter = rateLimit({
+  ...sharedOptions,
+  store: sharedStore("subscription-payment"),
+  windowMs: 60 * 1000,
+  max: 6,
+  keyGenerator: (req) => String(req.user.userId),
+  message: { error: "Please wait a minute before checking payment again." },
+});
+
+module.exports = { apiRateLimiter, authRateLimiter, publicRateLimiter, publicEventRateLimiter, publicOrderRateLimiter, otpRequestRateLimiter, statusRateLimiter, subscriptionPaymentLimiter };

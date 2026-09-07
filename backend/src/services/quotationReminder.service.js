@@ -35,7 +35,7 @@ async function recordReminder(quote, type, now) {
     throw error;
   }
   const remaining = Math.max(0, quote.depositRequiredAmount - quote.amountPaid);
-  const message = copy(quote.shop.user.language, type, quote, remaining);
+  const message = copy(quote.shop.user?.language || quote.shop.parentShop?.user?.language || "sw", type, quote, remaining);
   const href = `/quotations?status=${quote.status}`;
   const actionKey = `quotation-reminder:${type}:${quote.id}:r${quote.currentRevisionNumber}`;
   await prisma.assistantAction.upsert({
@@ -66,7 +66,7 @@ async function runQuotationReminders(now = new Date()) {
       expiryDate: true, depositDueDate: true, depositRequiredAmount: true, amountPaid: true,
       customer: { select: { name: true } },
       shares: { select: { revisionNumber: true, viewedAt: true, acceptedAt: true } },
-      shop: { select: { user: { select: { language: true } } } },
+      shop: { select: { user: { select: { language: true } }, parentShop: { select: { user: { select: { language: true } } } } } },
     },
     orderBy: { updatedAt: "asc" },
     take: 500,

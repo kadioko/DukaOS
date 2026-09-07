@@ -318,7 +318,7 @@ const login = asyncHandler(async (req, res) => {
   } else {
     staff = await prisma.staffMember.findFirst({
       where: { phone: { in: phoneValues } },
-      include: { shop: { include: { user: true } } },
+      include: { shop: { include: { user: true, parentShop: { include: { user: true } } } } },
     });
     if (!staff || !staff.isActive || !staff.pin) return res.status(401).json({ error: "Invalid phone or PIN" });
     const match = await bcrypt.compare(pin, staff.pin);
@@ -329,7 +329,8 @@ const login = asyncHandler(async (req, res) => {
     if (!canUseFeature(staff.shop, "STAFF")) {
       return res.status(403).json({ error: "Staff login requires DukaPilot Pro", code: "PLAN_UPGRADE_REQUIRED" });
     }
-    accountUser = staff.shop.user;
+    accountUser = staff.shop.user || staff.shop.parentShop?.user;
+    if (!accountUser) return res.status(401).json({ error: "Staff account owner not found" });
   }
 
   const accessToken = issueAccessToken(accountUser, staff);
@@ -343,6 +344,10 @@ const login = asyncHandler(async (req, res) => {
 const me = asyncHandler(async (req, res) => {
   const profile = req.user.staffId ? await getStaffProfile(req.user.staffId) : await getProfile(req.user.userId);
   if (!profile) return res.status(404).json({ error: "User not found" });
+  if (!req.user.staffId && profile.shop && req.user.resolvedShopId && req.user.resolvedShopId !== profile.shop.id) {
+    profile.businessShopId = profile.shop.id;
+    profile.shop = await prisma.shop.findUnique({ where: { id: req.user.resolvedShopId }, select: { id: true, name: true, location: true, district: true, category: true, parentShopId: true, isActive: true, isCatalogPublished: true } });
+  }
   res.json({ user: profile });
 });
 
@@ -533,11 +538,14 @@ async function getStaffProfile(staffId) {
           isActive: true,
           isCatalogPublished: true,
           user: { select: { id: true, phone: true, name: true, role: true, language: true, createdAt: true } },
+          parentShop: { select: { user: { select: { id: true, phone: true, name: true, role: true, language: true, createdAt: true } } } },
         },
       },
     },
   });
   if (!staff || !staff.isActive) return null;
+  staff.shop.user = staff.shop.user || staff.shop.parentShop?.user;
+  if (!staff.shop.user) return null;
   return {
     id: staff.shop.user.id,
     phone: staff.phone || staff.shop.user.phone,

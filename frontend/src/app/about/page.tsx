@@ -115,8 +115,8 @@ export default function AboutPage() {
             <h2 className="mt-2 text-2xl font-black tracking-normal text-gray-950 sm:text-3xl">{isSwahili ? "Anza na duka moja, ujifunze kwa kazi halisi." : "Start with one shop, learn from real work."}</h2>
             <p className="mt-4 max-w-2xl text-base leading-7 text-gray-600">
               {isSwahili
-                ? "DukaPilot iko tayari kwa duka moja. Multi-branch bado ni roadmap ya Pro, kwa sababu inahitaji stock transfer, ruhusa za branch na ripoti za branch ambazo zinapaswa kujengwa kwa ushahidi wa maduka yanayotumia mfumo kila siku."
-                : "DukaPilot is ready for one shop today. Multi-branch remains a Pro roadmap because stock transfers, branch permissions, and branch reporting should be built from evidence gathered with shops using the product every day."}
+                ? "DukaPilot inaanza vizuri na duka moja, na Pro inasaidia matawi kwa biashara zinazokua. Kila tawi lina stock, mauzo na staff wake; mmiliki anaweza kuhamisha bidhaa na kuona muhtasari wa matawi yote bila kuchanganya rekodi."
+                : "DukaPilot starts cleanly for one shop, and Pro supports branches for growing businesses. Each location keeps its own stock, sales, and staff; the owner can transfer stock and see a combined overview without mixing records."}
             </p>
           </div>
           <div className="border-l-4 border-brand-600 pl-5"><p className="text-lg font-bold text-gray-950">{isSwahili ? "Lengo la setup ya kwanza" : "The first setup goal"}</p><p className="mt-2 text-base leading-7 text-gray-600">{isSwahili ? "Bidhaa 10, mauzo 10 halisi, halafu kurudi siku ya pili. Hapo mfumo unaanza kuwa sehemu ya biashara, si app nyingine tu kwenye simu." : "10 products, 10 real sales, then return on a second day. That is when the system starts becoming part of the business, not just another app on a phone."}</p></div>

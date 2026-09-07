@@ -1,5 +1,5 @@
 const prisma = require("../lib/prisma");
-const { getShopIdForUser } = require("../lib/shopAccess");
+const { getBillingShopIdForUser: getShopIdForUser } = require("../lib/shopAccess");
 const { phoneLookupValues } = require("../lib/phone");
 
 const SALES_REQUIRED = 10;

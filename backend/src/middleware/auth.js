@@ -68,13 +68,16 @@ async function authenticate(req, res, next) {
           canRecordQuotationPayments: true,
           canArchiveQuotations: true,
           canDeleteQuotationDrafts: true,
-          shop: { select: { userId: true } },
+          shop: { select: { userId: true, parentShopId: true, parentShop: { select: { userId: true } } } },
         },
       });
-      if (!staff || staff.shop.userId !== payload.userId) {
+      if (!staff || (staff.shop.userId || staff.shop.parentShop?.userId) !== payload.userId) {
         return res.status(401).json({ error: "Staff access expired" });
       }
       payload.shopId = staff.shopId;
+      payload.businessShopId = staff.shop.parentShopId || staff.shopId;
+      const requested = req.headers["x-dukapilot-branch"];
+      if (requested && requested !== staff.shopId) return res.status(403).json({ error: "Staff can only access their assigned branch" });
       payload.staffRole = staff.role;
       payload.permissions = {
         canSell: staff.canSell,
@@ -96,6 +99,11 @@ async function authenticate(req, res, next) {
         canArchiveQuotations: staff.canArchiveQuotations,
         canDeleteQuotationDrafts: staff.canDeleteQuotationDrafts,
       };
+    }
+    payload.requestedShopId = typeof req.headers["x-dukapilot-branch"] === "string" ? req.headers["x-dukapilot-branch"] : undefined;
+    if (payload.requestedShopId && !payload.staffId) {
+      if (payload.requestedShopId.length > 100) return res.status(400).json({ error: "Invalid branch" });
+      payload.resolvedShopId = await getShopIdForUser(payload);
     }
     req.user = payload;
     next();

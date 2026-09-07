@@ -138,6 +138,7 @@ interface Report {
 }
 
 interface Subscription {
+  additionalBranchSlots?: number;
   id: string;
   name: string;
   plan: string;
@@ -288,6 +289,8 @@ interface SmsMonitoring {
 }
 
 interface BillingDraft {
+  extraBranches?: string;
+  kind?: string;
   plan: "BASIC" | "PRO";
   months: string;
   amount: string;
@@ -756,7 +759,7 @@ export default function AdminPage() {
   }
 
   function billingDraftFor(shop: Subscription) {
-    return billingDrafts[shop.id] || defaultBillingDraft(shop.plan === "PRO" ? "PRO" : "BASIC");
+    return billingDrafts[shop.id] || { ...defaultBillingDraft(shop.plan === "PRO" ? "PRO" : "BASIC"), extraBranches: String(shop.additionalBranchSlots || 0), amount: String(shop.plan === "PRO" ? 35000 + 10000 * (shop.additionalBranchSlots || 0) : 15000) };
   }
 
   function formatDate(value?: string | null) {
@@ -773,7 +776,7 @@ export default function AdminPage() {
 
   function updateBillingDraft(shop: Subscription, patch: Partial<BillingDraft>) {
     setBillingDrafts((prev) => {
-      const current = prev[shop.id] || defaultBillingDraft(shop.plan === "PRO" ? "PRO" : "BASIC");
+      const current = prev[shop.id] || billingDraftFor(shop);
       const next = { ...current, ...patch };
       if (patch.plan && !patch.amount) next.amount = patch.plan === "PRO" ? "35000" : "15000";
       return { ...prev, [shop.id]: next };
@@ -796,6 +799,8 @@ export default function AdminPage() {
     try {
       const data = await api.post<{ message?: string; reused?: boolean; shop: Subscription }>(`/subscription/admin/${shop.id}/payments`, {
         plan: selectedPlan,
+        kind: draft.kind || "RENEWAL",
+        extraBranches: selectedPlan === "PRO" ? Number(draft.extraBranches ?? shop.additionalBranchSlots ?? 0) : 0,
         months: Number(draft.months) || 1,
         amount: Number(draft.amount) || (selectedPlan === "PRO" ? 35000 : 15000),
         method: draft.method || "MPESA",
@@ -1988,6 +1993,8 @@ export default function AdminPage() {
                         </div>
                       </div>
                       <div className="mt-3 grid gap-2 sm:grid-cols-6">
+                        <label className="grid gap-1 text-xs sm:col-span-3">Payment purpose<select value={draft.kind || "RENEWAL"} onChange={(e) => updateBillingDraft(shop, { kind: e.target.value })} className="rounded-lg border p-2"><option value="RENEWAL">Renew subscription</option><option value="BRANCH_ADDON">Additional branches until current expiry</option></select></label>
+                        <label className="grid gap-1 text-xs sm:col-span-3">Total paid extra locations (above 4)<input type="number" min={0} max={100} value={draft.extraBranches ?? shop.additionalBranchSlots ?? 0} onChange={(e) => updateBillingDraft(shop, { extraBranches: e.target.value })} className="rounded-lg border p-2" /></label>
                         <select
                           value={draft.plan}
                           onChange={(e) => updateBillingDraft(shop, { plan: e.target.value as "BASIC" | "PRO" })}

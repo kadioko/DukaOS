@@ -81,7 +81,7 @@ const corsOptions = {
   },
   credentials: true,
   methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"],
+  allowedHeaders: ["Content-Type", "Authorization", "X-DukaPilot-Language", "X-DukaPilot-Branch"],
   optionsSuccessStatus: 204,
 };
 
@@ -100,7 +100,7 @@ app.options("/{*path}", cors(corsOptions));
 app.use(express.json({
   limit: "1mb",
   verify(req, _res, buffer) {
-    if (req.originalUrl === "/api/webhooks/meta-whatsapp") req.rawBody = Buffer.from(buffer);
+    if (["/api/webhooks/meta-whatsapp", "/api/webhooks/ntzs"].includes(req.originalUrl)) req.rawBody = Buffer.from(buffer);
   },
 }));
 const productionRequestLogger = morgan((tokens, req, res) => (
@@ -110,6 +110,7 @@ app.use(process.env.NODE_ENV === "production" ? productionRequestLogger : morgan
 // Meta calls this unauthenticated endpoint. Its verification token and signed
 // POST body are validated in the controller, before API rate limits and audit logs.
 app.use("/api/webhooks", metaWhatsAppWebhookRoutes);
+app.post("/api/webhooks/ntzs", require("./controllers/subscriptionCheckout.controller").webhook);
 app.use(setAuditContext);
 app.use(auditTrail);
 
@@ -154,6 +155,7 @@ app.use("/api/settings", settingsRoutes);
 app.use("/api/customer-orders", customerOrderRoutes);
 app.use("/api/reports", reportRoutes);
 app.use("/api/subscription", subscriptionRoutes);
+app.use("/api/branches", require("./routes/branch.routes"));
 app.use("/api/debts", debtRoutes);
 app.use("/api/expenses", expenseRoutes);
 app.use("/api/staff", staffRoutes);

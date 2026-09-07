@@ -28,6 +28,7 @@ import {
   Tractor,
   Gift,
   FileText,
+  Building2,
 } from "lucide-react";
 import { clearToken, api, getCurrentSession, markSessionActive } from "@/lib/api";
 import { t, useLang, setLanguage as setAppLanguage, type Lang } from "@/lib/i18n";
@@ -93,6 +94,7 @@ const merchantNav: NavItem[] = [
   { href: "/profit", labelKey: "nav.profit", icon: ChartNoAxesCombined, permission: "canViewReports", group: "money" },
   { href: "/billing", labelKey: "nav.billing", icon: CreditCard, permission: "canManageStaff", group: "money" },
   { href: "/staff", labelKey: "nav.staff", icon: Users, permission: "canManageStaff", feature: "staff", group: "manage" },
+  { href: "/branches", label: "Branches / Matawi", icon: Building2, ownerOnly: true, group: "manage" },
   { href: "/referrals", labelKey: "nav.referrals", icon: Gift, ownerOnly: true, group: "manage" },
   { href: "/settings", labelKey: "nav.settings", icon: Settings, group: "manage" },
   { href: "/reports", labelKey: "nav.reportIssue", icon: AlertTriangle, group: "manage" },

@@ -319,7 +319,7 @@ const create = asyncHandler(async (req, res) => {
   const product = await prisma.$transaction(async (tx) => {
     const barcode = generateBarcode ? await nextInternalBarcode(tx) : checked.value;
     if (barcode) {
-      const duplicate = await tx.product.findUnique({ where: { barcode }, select: { id: true } });
+      const duplicate = await tx.product.findUnique({ where: { shopId_barcode: { shopId, barcode } }, select: { id: true } });
       if (duplicate) throw Object.assign(new Error("This barcode is already used by another product."), { status: 409, code: "BARCODE_DUPLICATE" });
     }
     const created = await tx.product.create({
@@ -400,7 +400,7 @@ const update = asyncHandler(async (req, res) => {
   let barcode = checked.value;
   if (generateBarcode) barcode = await prisma.$transaction((tx) => nextInternalBarcode(tx));
   if (barcode && barcode !== existing.barcode) {
-    const duplicate = await prisma.product.findUnique({ where: { barcode }, select: { id: true } });
+    const duplicate = await prisma.product.findUnique({ where: { shopId_barcode: { shopId, barcode } }, select: { id: true } });
     if (duplicate) {
       req.audit = { action: "barcode.duplicate_attempt", resourceType: "product", resourceId: existing.id, metadata: { shopId, barcode } };
       return res.status(409).json({ error: "This barcode is already used by another product." });
@@ -453,7 +453,7 @@ const importCsv = asyncHandler(async (req, res) => {
 
   const barcodes = products.map((product) => product.barcode).filter(Boolean);
   if (barcodes.length) {
-    const existing = await prisma.product.findMany({ where: { barcode: { in: barcodes } }, select: { barcode: true } });
+    const existing = await prisma.product.findMany({ where: { shopId, barcode: { in: barcodes } }, select: { barcode: true } });
     if (existing.length) {
       return res.status(409).json({
         error: "One or more barcodes are already used by another product.",

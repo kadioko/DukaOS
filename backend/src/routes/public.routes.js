@@ -170,6 +170,7 @@ router.get("/shops/:id", async (req, res, next) => {
         isCatalogPublished: true,
         isDemo: true,
         user: { select: { phone: true } },
+        parentShop: { select: { user: { select: { phone: true } } } },
         _count: { select: { products: { where: { isActive: true, currentStock: { gt: 0 } } } } },
       },
     });
@@ -208,7 +209,7 @@ router.get("/shops/:id", async (req, res, next) => {
         location: shop.location,
         district: shop.district,
         category: shop.category,
-        phone: shop.user.phone,
+        phone: shop.user?.phone || shop.parentShop?.user?.phone || null,
         productCount: shop._count.products,
       },
       products,
@@ -233,7 +234,7 @@ router.post("/orders", publicOrderRateLimiter, async (req, res, next) => {
 
     const shop = await prisma.shop.findUnique({
       where: { id: shopId },
-      include: { user: { select: { phone: true } } },
+      include: { user: { select: { phone: true } }, parentShop: { select: { user: { select: { phone: true } } } } },
     });
     if (!shop) return res.status(404).json({ error: "Shop not found" });
     if (!shop.isCatalogPublished || shop.isDemo || !isPublicShopActive(shop)) {
@@ -293,7 +294,7 @@ router.post("/orders", publicOrderRateLimiter, async (req, res, next) => {
     });
 
     // Notify shop owner via WhatsApp (fire-and-forget)
-    const shopPhone = shop.user?.phone;
+    const shopPhone = shop.user?.phone || shop.parentShop?.user?.phone;
     const { message, whatsappUrl } = buildCustomerOrderMessage(
       { ...order, user: shop.user },
       { ...shop, phone: shopPhone }

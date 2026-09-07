@@ -284,4 +284,4 @@ Highest impact for acquisition:
 2. Run short field tests of Daily Close, Receive Stock, QR ordering, and receipt printing with active merchants; record what confuses them.
 3. Add lightweight trial follow-up reporting for activation, second-day return, and conversion.
 4. Test QR shop ordering as a WhatsApp Status and counter-sign campaign with one clear offer per merchant.
-5. Hold multi-branch until 20-30 active single-shop merchants show which transfer, branch, and reporting needs are real.
+5. Field-test Pro branches with multi-location merchants. Capture which transfer, branch, and consolidated-report needs justify a later in-transit or approval workflow.

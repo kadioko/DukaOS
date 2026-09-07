@@ -49,6 +49,11 @@ Every published shop has a shareable catalog link and downloadable QR code in **
 
 Use the QR on WhatsApp Status, a counter sign, packaging, or a customer-facing receipt. Before sharing, verify the shop is published and prices/products are ready for customers to see.
 
-## Multi-Branch Pro Roadmap
+## Multi-Branch Pro
 
-Multi-branch is deliberately not live yet. Before introducing it, DukaPilot needs a branch-aware inventory model, stock transfers, per-branch cashier sessions, branch-level permissions, and consolidated reporting. We will validate demand with the first 20-30 active shops before committing to that migration. It is positioned as a future Pro capability, not a promise that current one-shop data already supports multiple locations.
+Branches are live for Pro businesses. Pro includes four locations in total, including
+the main shop, and each additional location costs TZS 10,000/month. Each location
+keeps separate stock, sales, staff, customers, debts, orders, quotations and Daily
+Close records. Owners can view a combined monthly overview and transfer stock between
+locations; staff remain assigned to one location. See [BRANCHES.md](BRANCHES.md) for
+the billing rules, transfer safeguards and release checks.
