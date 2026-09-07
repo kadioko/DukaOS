@@ -256,10 +256,12 @@ export default function PricingPage() {
 
               <Link
                 href="/register"
-                className={`block w-full text-center py-2.5 rounded-xl text-sm font-semibold transition-colors ${
-                  plan.highlight
+                className={`block w-full rounded-xl py-2.5 text-center text-sm font-semibold transition-colors ${
+                  plan.id === "BASIC"
                     ? "bg-brand-600 text-white hover:bg-brand-700"
-                    : "bg-gray-100 text-gray-800 hover:bg-gray-200"
+                    : plan.id === "PRO"
+                      ? "bg-gray-900 text-white hover:bg-gray-800"
+                      : "border border-brand-200 bg-brand-50 text-brand-800 hover:bg-brand-100"
                 }`}
               >
                 {plan.cta[lang]}
@@ -339,7 +341,7 @@ export default function PricingPage() {
                 <p className="text-gray-600">{lang === "sw" ? "Jina" : "Name"}: Necuva Group Limited</p>
               </div>
               <div className="rounded-xl border border-gray-100 bg-gray-50 p-3">
-                <p className="font-bold text-gray-950">4. {lang === "sw" ? "Tuma pesa" : "Send money"}: 0743910580</p>
+                <p className="font-bold text-gray-950">5. {lang === "sw" ? "Tuma pesa" : "Send money"}: 0743910580</p>
                 <p className="text-gray-600">{lang === "sw" ? "Weka reference au tuma ujumbe WhatsApp 0743910580." : "Submit the reference or send a WhatsApp message to 0743910580."}</p>
               </div>
             </div>
