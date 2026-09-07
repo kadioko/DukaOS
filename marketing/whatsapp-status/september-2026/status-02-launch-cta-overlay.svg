@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1920" viewBox="0 0 1080 1920">
+  <defs>
+    <linearGradient id="topShade" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#06190f" stop-opacity="0.94"/>
+      <stop offset="0.62" stop-color="#06190f" stop-opacity="0.16"/>
+      <stop offset="1" stop-color="#06190f" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="bottomShade" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#06190f" stop-opacity="0"/>
+      <stop offset="0.46" stop-color="#06190f" stop-opacity="0.22"/>
+      <stop offset="1" stop-color="#06190f" stop-opacity="0.95"/>
+    </linearGradient>
+  </defs>
+  <rect width="1080" height="1920" fill="url(#topShade)"/>
+  <rect width="1080" height="1920" fill="url(#bottomShade)"/>
+  <text x="80" y="125" fill="#f3c969" font-family="Arial, sans-serif" font-size="35" font-weight="700" letter-spacing="5">DUKAPILOT</text>
+  <rect x="80" y="160" width="74" height="5" fill="#f3c969"/>
+  <text x="80" y="310" fill="#ffffff" font-family="Arial, sans-serif" font-size="88" font-weight="800">DukaPilot</text>
+  <text x="80" y="410" fill="#ffffff" font-family="Arial, sans-serif" font-size="88" font-weight="800">iko live.</text>
+  <text x="80" y="500" fill="#d1fae5" font-family="Arial, sans-serif" font-size="39" font-weight="500">Msaidizi wa AI kwa duka lako.</text>
+  <text x="80" y="1535" fill="#f3c969" font-family="Arial, sans-serif" font-size="34" font-weight="700" letter-spacing="3">ANZA LEO</text>
+  <text x="80" y="1620" fill="#ffffff" font-family="Arial, sans-serif" font-size="65" font-weight="800">Jaribu bure siku 14.</text>
+  <text x="80" y="1682" fill="#d1fae5" font-family="Arial, sans-serif" font-size="37" font-weight="500">Mauzo | Stock | Madeni | AI</text>
+  <rect x="80" y="1750" width="920" height="2" fill="#f3c969" fill-opacity="0.7"/>
+  <text x="80" y="1835" fill="#ffffff" font-family="Arial, sans-serif" font-size="36" font-weight="700">Tuma WhatsApp</text>
+  <text x="1000" y="1835" fill="#f3c969" font-family="Arial, sans-serif" font-size="48" font-weight="800" text-anchor="end">0743 910 580</text>
+</svg>

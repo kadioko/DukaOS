@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1920" viewBox="0 0 1080 1920">
+  <defs>
+    <linearGradient id="topShade" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#071c12" stop-opacity="0.92"/>
+      <stop offset="0.64" stop-color="#071c12" stop-opacity="0.22"/>
+      <stop offset="1" stop-color="#071c12" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="bottomShade" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#071c12" stop-opacity="0"/>
+      <stop offset="0.34" stop-color="#071c12" stop-opacity="0.24"/>
+      <stop offset="1" stop-color="#071c12" stop-opacity="0.94"/>
+    </linearGradient>
+  </defs>
+  <rect width="1080" height="1920" fill="url(#topShade)"/>
+  <rect width="1080" height="1920" fill="url(#bottomShade)"/>
+  <text x="80" y="125" fill="#f3c969" font-family="Arial, sans-serif" font-size="35" font-weight="700" letter-spacing="5">DUKAPILOT</text>
+  <rect x="80" y="160" width="74" height="5" fill="#f3c969"/>
+  <text x="80" y="300" fill="#ffffff" font-family="Arial, sans-serif" font-size="89" font-weight="800">Duka lako</text>
+  <text x="80" y="400" fill="#ffffff" font-family="Arial, sans-serif" font-size="89" font-weight="800">lisibahatike.</text>
+  <text x="80" y="486" fill="#d1fae5" font-family="Arial, sans-serif" font-size="38" font-weight="500">Jua stock, mauzo, madeni</text>
+  <text x="80" y="540" fill="#d1fae5" font-family="Arial, sans-serif" font-size="38" font-weight="500">na hatua inayofuata.</text>
+  <text x="80" y="1635" fill="#f3c969" font-family="Arial, sans-serif" font-size="34" font-weight="700" letter-spacing="3">DUKA LAKO KWENYE SIMU</text>
+  <text x="80" y="1718" fill="#ffffff" font-family="Arial, sans-serif" font-size="58" font-weight="800">Mauzo. Stock. Madeni. AI.</text>
+  <rect x="80" y="1780" width="920" height="2" fill="#f3c969" fill-opacity="0.7"/>
+  <text x="80" y="1854" fill="#ffffff" font-family="Arial, sans-serif" font-size="38" font-weight="700">dukapilot.com</text>
+  <text x="1000" y="1854" fill="#f3c969" font-family="Arial, sans-serif" font-size="38" font-weight="700" text-anchor="end">Tanzania</text>
+</svg>
