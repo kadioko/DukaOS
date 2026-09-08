@@ -47,7 +47,7 @@ test("merchant deletion anonymizes a business with branches and retained financi
   ]);
 
   assert.match(accountAfter.phone, /^deleted-/);
-  assert.equal(rootAfter.userId, null);
+  assert.equal(rootAfter.userId, user.id);
   assert.equal(rootAfter.isActive, false);
   assert.equal(branchAfter.isActive, false);
   assert.equal(branchAfter.branchArchived, true);

@@ -76,7 +76,6 @@ async function anonymizeMerchantAccount(userId) {
       await tx.supplierCatalogProduct.updateMany({ where: { supplierId: user.supplier.id }, data: { name: "Deleted supplier product", sku: null, note: null, isAvailable: false } });
       await tx.supplier.update({ where: { id: user.supplier.id }, data: { name: "Deleted supplier", phone: `deleted-${user.supplier.id}`, address: null, verificationStatus: "REJECTED", verifiedAt: null, adminNotes: null, createdByShopId: null, userId: null } });
     }
-    await tx.shop.update({ where: { id: rootId }, data: { userId: null } });
     const account = await tx.user.update({
       where: { id: userId },
       data: { phone: `deleted-${userId}@dukapilot.invalid`, name: "Deleted account", pin: disabledPin, sessionVersion: { increment: 1 } },
