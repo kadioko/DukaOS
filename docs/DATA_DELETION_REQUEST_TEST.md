@@ -1,6 +1,6 @@
 # Controlled Data Deletion Request Test
 
-Status: Public process test completed; database-backed synthetic test implemented for CI
+Status: Completed; public process and database-backed synthetic workflow verified
 
 Request ID: `DUKA-DEL-TEST-20260825-001`
 
@@ -22,6 +22,8 @@ Owner: DukaPilot Privacy Owner (platform admin), Necuva Group Limited
 
 Completion date: 2026-08-25
 
+Database workflow verification date: 2026-09-09
+
 Completed by: DukaPilot Privacy Owner (platform admin)
 
 Outcome: The public intake, identity-verification requirements, deletion scope,
@@ -34,12 +36,13 @@ customer or production data is used.
 
 Automated evidence: `backend/tests/postgresIntegrity.test.js`, configured in the
 `postgres-integrity` CI job after applying all migrations to a disposable database.
-The test must pass in CI before recording the database workflow as completed evidence.
+The test passed in GitHub Actions run
+`https://github.com/kadioko/DukaPilot/actions/runs/34288036715`.
 
 ## Retention expiry
 
 The evidence for this synthetic test contains no customer data. Retain this
-record only until 2026-11-23, then delete or replace it with a new test record.
+record only until 2026-12-08, then delete or replace it with a new test record.
 
 ## Live-request handling checklist
 
