@@ -55,9 +55,22 @@ async function anonymizeMerchantAccount(userId) {
     await tx.quotationItem.updateMany({ where: { quotation: { shopId: { in: shopIds } } }, data: { description: null, internalNote: null } });
     await tx.report.updateMany({ where: { userId }, data: { title: "Deleted support report", description: "Account deleted", adminNotes: null } });
     await tx.auditLog.updateMany({ where: { userId }, data: { ipAddress: null, userAgent: null, metadata: Prisma.DbNull } });
+    const anonymizedShopData = {
+      name: "Deleted business",
+      location: "Deleted",
+      district: null,
+      isActive: false,
+      isCatalogPublished: false,
+      followUpNotes: null,
+      lastContactedAt: null,
+    };
     await tx.shop.updateMany({
-      where: { id: { in: shopIds } },
-      data: { name: "Deleted business", location: "Deleted", district: null, isActive: false, isCatalogPublished: false, followUpNotes: null, lastContactedAt: null },
+      where: { parentShopId: rootId },
+      data: { ...anonymizedShopData, branchArchived: true },
+    });
+    await tx.shop.update({
+      where: { id: rootId },
+      data: anonymizedShopData,
     });
     if (user.supplier) {
       await tx.supplierCatalogProduct.updateMany({ where: { supplierId: user.supplier.id }, data: { name: "Deleted supplier product", sku: null, note: null, isAvailable: false } });
