@@ -20,7 +20,7 @@ const updatePreferences = asyncHandler(async (req, res) => {
   if (req.user.staffId) return res.status(403).json({ error: "Only the shop owner can change alert preferences" });
   const shopId = await getShopIdForUser(req.user);
   const data = {};
-  for (const key of ["lowStock", "debtDue", "subscriptionExpiry", "dailyAssistant"]) {
+  for (const key of ["lowStock", "debtDue", "subscriptionExpiry", "dailyAssistant", "privatePreview"]) {
     if (typeof req.body[key] === "boolean") data[key] = req.body[key];
   }
   const preferences = await prisma.notificationPreference.upsert({ where: { shopId }, update: data, create: { shopId, ...data } });

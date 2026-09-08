@@ -106,6 +106,68 @@ test("debt payment rejects an overpayment and does not create a ledger entry", a
   assert.equal(createdPayments, 0);
 });
 
+test("debt payment retry returns the original collection without adding it twice", async () => {
+  let createdPayments = 0;
+  mockPrisma({
+    shop: { findUnique: async () => ({ id: "shop-1" }) },
+    $transaction: async (fn) => fn({
+      debt: {
+        findFirst: async () => ({ id: "debt-1", shopId: "shop-1", amount: 10000, amountPaid: 3000, status: "PARTIAL" }),
+        findUnique: async () => ({ id: "debt-1", amount: 10000, amountPaid: 3000, status: "PARTIAL", payments: [{ id: "payment-1" }] }),
+      },
+      debtPayment: {
+        findFirst: async () => ({ id: "payment-1", debtId: "debt-1", requestKey: "12345678-1234-1234-1234-123456789abc", amount: 3000, paymentMethod: "CASH", paymentRef: null }),
+        create: async () => { createdPayments += 1; },
+      },
+    }),
+  });
+  delete require.cache[shopAccessPath];
+  delete require.cache[debtControllerPath];
+  const controller = require(debtControllerPath);
+  const res = response();
+  await controller.recordPayment({ user: { userId: "owner-1" }, params: { id: "debt-1" }, body: { amount: 3000, requestKey: "12345678-1234-1234-1234-123456789abc" } }, res);
+  assert.equal(res.payload.reused, true);
+  assert.equal(createdPayments, 0);
+  assert.equal(res.payload.debt.amountPaid, 3000);
+});
+
+test("debt payment retry key cannot be reused for a different amount", async () => {
+  mockPrisma({
+    shop: { findUnique: async () => ({ id: "shop-1" }) },
+    $transaction: async (fn) => fn({
+      debt: { findFirst: async () => ({ id: "debt-1", shopId: "shop-1", amount: 10000, amountPaid: 3000, status: "PARTIAL" }) },
+      debtPayment: { findFirst: async () => ({ id: "payment-1", amount: 3000, paymentMethod: "CASH", paymentRef: null }) },
+    }),
+  });
+  delete require.cache[shopAccessPath];
+  delete require.cache[debtControllerPath];
+  const controller = require(debtControllerPath);
+  const res = response();
+  let error;
+  await controller.recordPayment({ user: { userId: "owner-1" }, params: { id: "debt-1" }, body: { amount: 2000, requestKey: "12345678-1234-1234-1234-123456789abc" } }, res, (nextError) => { error = nextError; });
+  assert.equal(error.status, 409);
+  assert.match(error.message, /different payment details/);
+});
+
+test("debt edit refuses to overwrite a concurrently recorded payment and derives status", async () => {
+  let updateData;
+  mockPrisma({
+    shop: { findUnique: async () => ({ id: "shop-1" }) },
+    debt: {
+      findFirst: async () => ({ id: "debt-1", shopId: "shop-1", customerPhone: "+255700000001", customerName: "Asha", amount: 10000, amountPaid: 0, status: "OPEN" }),
+      updateMany: async ({ data }) => { updateData = data; return { count: 0 }; },
+    },
+  });
+  delete require.cache[shopAccessPath];
+  delete require.cache[debtControllerPath];
+  const controller = require(debtControllerPath);
+  const res = response();
+  await controller.update({ user: { userId: "owner-1" }, params: { id: "debt-1" }, body: { note: "Updated", status: "PAID" } }, res);
+  assert.equal(res.statusCode, 409);
+  assert.equal(updateData.status, "OPEN");
+  assert.equal(updateData.amountPaid, 0);
+});
+
 test("only an unpaid standalone debt can be deleted", async () => {
   let deleteWhere;
   mockPrisma({

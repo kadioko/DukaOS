@@ -199,7 +199,11 @@ const deleteUser = asyncHandler(async (req, res) => {
     }
   }
 
-  await prisma.user.delete({ where: { id: userId } });
+  if (user.shop) {
+    await require("../services/accountDeletion.service").anonymizeMerchantAccount(userId);
+  } else {
+    await prisma.user.delete({ where: { id: userId } });
+  }
 
   req.audit = {
     action: "admin.user.delete",
@@ -216,7 +220,7 @@ const deleteUser = asyncHandler(async (req, res) => {
     },
   };
 
-  res.json({ message: "User removed", deletedUser: user });
+  res.json({ message: user.shop ? "Merchant account access removed and personal data anonymized" : "User removed", deletedUser: user });
 });
 
 // Admin: reset a user's PIN (requires new PIN in body)
@@ -232,7 +236,7 @@ const resetUserPin = asyncHandler(async (req, res) => {
   if (!user) return res.status(404).json({ error: "User not found" });
 
   const hashedPin = await bcrypt.hash(newPin, 10);
-  await prisma.user.update({ where: { id: userId }, data: { pin: hashedPin } });
+  await prisma.user.update({ where: { id: userId }, data: { pin: hashedPin, sessionVersion: { increment: 1 } } });
 
   req.audit = {
     action: "admin.user.resetPin",
@@ -256,7 +260,7 @@ const resetStaffPin = asyncHandler(async (req, res) => {
   if (!staff) return res.status(404).json({ error: "Staff member not found" });
 
   const hashedPin = await bcrypt.hash(newPin, 10);
-  await prisma.staffMember.update({ where: { id: staffId }, data: { pin: hashedPin } });
+  await prisma.staffMember.update({ where: { id: staffId }, data: { pin: hashedPin, sessionVersion: { increment: 1 } } });
 
   req.audit = {
     action: "admin.staff.resetPin",

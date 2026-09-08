@@ -123,8 +123,8 @@ const changePin = asyncHandler(async (req, res) => {
   if (!match) return res.status(401).json({ error: "Current PIN is incorrect" });
 
   const hashedPin = await bcrypt.hash(newPin, 10);
-  if (req.user.staffId) await prisma.staffMember.update({ where: { id: account.id }, data: { pin: hashedPin } });
-  else await prisma.user.update({ where: { id: account.id }, data: { pin: hashedPin } });
+  if (req.user.staffId) await prisma.staffMember.update({ where: { id: account.id }, data: { pin: hashedPin, sessionVersion: { increment: 1 } } });
+  else await prisma.user.update({ where: { id: account.id }, data: { pin: hashedPin, sessionVersion: { increment: 1 } } });
 
   req.audit = { action: "settings.pin.change", resourceType: req.user.staffId ? "staff" : "user", resourceId: account.id };
   res.json({ message: "PIN changed successfully" });

@@ -6,6 +6,7 @@ const jwt = require("jsonwebtoken");
 const prismaPath = path.resolve(__dirname, "../src/lib/prisma.js");
 const shopAccessPath = path.resolve(__dirname, "../src/lib/shopAccess.js");
 const authPath = path.resolve(__dirname, "../src/middleware/auth.js");
+const subscriptionPath = path.resolve(__dirname, "../src/middleware/subscription.js");
 const customerOrderPath = path.resolve(__dirname, "../src/controllers/customerOrder.controller.js");
 
 function mockPrisma(prismaMock) {
@@ -24,9 +25,11 @@ function response() {
 test("authenticate refreshes staff permissions from the database", async () => {
   process.env.JWT_SECRET = "hardening-test-secret";
   mockPrisma({
+    user: { findUnique: async () => ({ id: "owner-1", role: "MERCHANT", sessionVersion: 1 }) },
     staffMember: {
       findFirst: async () => ({
         id: "staff-1",
+        sessionVersion: 1,
         shopId: "shop-1",
         canSell: false,
         canManageStock: true,
@@ -38,7 +41,7 @@ test("authenticate refreshes staff permissions from the database", async () => {
   });
   delete require.cache[authPath];
   const { authenticate } = require(authPath);
-  const token = jwt.sign({ userId: "owner-1", role: "MERCHANT", staffId: "staff-1", permissions: { canSell: true } }, process.env.JWT_SECRET);
+  const token = jwt.sign({ userId: "owner-1", role: "MERCHANT", staffId: "staff-1", sessionVersion: 1, permissions: { canSell: true } }, process.env.JWT_SECRET);
   const req = { headers: { authorization: `Bearer ${token}` } };
   const res = response();
   let nextCalled = false;
@@ -49,6 +52,49 @@ test("authenticate refreshes staff permissions from the database", async () => {
   assert.equal(req.user.shopId, "shop-1");
   assert.equal(req.user.permissions.canSell, false);
   assert.equal(req.user.permissions.canManageStock, true);
+});
+
+test("authenticate rejects a session issued before the account session version changed", async () => {
+  process.env.JWT_SECRET = "hardening-test-secret";
+  mockPrisma({ user: { findUnique: async () => ({ id: "owner-1", role: "MERCHANT", sessionVersion: 3 }) } });
+  delete require.cache[authPath];
+  const { authenticate } = require(authPath);
+  const token = jwt.sign({ userId: "owner-1", role: "MERCHANT", sessionVersion: 2 }, process.env.JWT_SECRET);
+  const req = { headers: { authorization: `Bearer ${token}` } };
+  const res = response();
+  let nextCalled = false;
+  await authenticate(req, res, () => { nextCalled = true; });
+  assert.equal(nextCalled, false);
+  assert.equal(res.statusCode, 401);
+  assert.equal(res.payload.error, "Session expired");
+});
+
+test("branch writes use the current root-business subscription instead of stale child billing fields", async () => {
+  require.cache[shopAccessPath] = {
+    id: shopAccessPath,
+    filename: shopAccessPath,
+    loaded: true,
+    exports: {
+      getShopIdForUser: async () => "branch-1",
+      getBillingShopIdForUser: async () => "root-1",
+    },
+  };
+  mockPrisma({
+    shop: {
+      findUnique: async ({ where }) => where.id === "branch-1"
+        ? { id: "branch-1", parentShopId: "root-1", branchArchived: false }
+        : { id: "root-1", plan: "PRO", isActive: true, trialEndsAt: null, subscriptionEndsAt: new Date(Date.now() + 86400000) },
+    },
+  });
+  delete require.cache[subscriptionPath];
+  const { requireActiveSubscription } = require(subscriptionPath);
+  await new Promise((resolve, reject) => {
+    requireActiveSubscription(
+      { method: "POST", user: { userId: "owner-1", role: "MERCHANT" } },
+      { status: () => ({ json: (payload) => reject(new Error(payload.error)) }) },
+      (error) => error ? reject(error) : resolve(),
+    );
+  });
 });
 
 test("customer orders reject skipping directly from pending to delivered", async () => {

@@ -16,6 +16,7 @@ interface AssistantAction {
   openedAt?: string | null;
   completedAt?: string | null;
   dismissedAt?: string | null;
+  outcomeVerifiedAt?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -98,6 +99,11 @@ export default function AssistantHistoryPage() {
                           <Icon className="h-3.5 w-3.5" />
                           {action.status}
                         </span>
+                        {action.outcomeVerifiedAt && (
+                          <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-700">
+                            {lang === "sw" ? "Matokeo yamethibitishwa" : "Outcome verified"}
+                          </span>
+                        )}
                         <span className="font-mono text-[11px] text-gray-400">{action.actionKey}</span>
                       </div>
                       <p className="mt-2 font-semibold text-gray-950">{action.title}</p>

@@ -1,5 +1,5 @@
 const prisma = require("./prisma");
-const { getShopIdForUser } = require("./shopAccess");
+const { getShopIdForUser, getBillingShopIdForUser } = require("./shopAccess");
 
 const PLAN_FEATURES = {
   BASIC: new Set(["CORE", "EXPORTS", "STAFF"]),
@@ -32,9 +32,13 @@ function requireFeature(feature) {
   return async (req, res, next) => {
     if (req.user.role === "ADMIN") return next();
     try {
-      const shopId = await getShopIdForUser(req.user);
+      const [shopId, billingShopId] = await Promise.all([getShopIdForUser(req.user), getBillingShopIdForUser(req.user)]);
+      const operatingShop = await prisma.shop.findUnique({ where: { id: shopId }, select: { parentShopId: true, branchArchived: true } });
+      if (!operatingShop || (operatingShop.parentShopId && operatingShop.branchArchived)) {
+        return res.status(403).json({ error: "This branch is archived. Select an active branch first." });
+      }
       const shop = await prisma.shop.findUnique({
-        where: { id: shopId },
+        where: { id: billingShopId },
         select: { plan: true, trialEndsAt: true, subscriptionEndsAt: true, isActive: true },
       });
       if (canUseFeature(shop, feature)) return next();

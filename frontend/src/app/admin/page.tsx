@@ -170,6 +170,19 @@ interface SubscriptionListResponse {
   limit: number;
   totalPages: number;
   statusCounts: Record<"trial" | "active" | "expired" | "suspended", number>;
+  supportQueue: Subscription[];
+  operationalCounts: { expiringTrials: number; stalledTrials: number; activatedTrials: number };
+}
+
+interface CheckoutException {
+  id: string;
+  plan: string;
+  amount: number;
+  status: string;
+  phone: string;
+  providerId?: string | null;
+  updatedAt: string;
+  shop: { id: string; name: string; user?: { name: string; phone: string } | null };
 }
 
 interface AdminReferral {
@@ -388,6 +401,11 @@ export default function AdminPage() {
   const [reportFilter, setReportFilter] = useState("OPEN");
   const [updatingReport, setUpdatingReport] = useState<string | null>(null);
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
+  const [subscriptionSupportQueue, setSubscriptionSupportQueue] = useState<Subscription[]>([]);
+  const [selectedSupportShop, setSelectedSupportShop] = useState<Subscription | null>(null);
+  const [subscriptionOperationalCounts, setSubscriptionOperationalCounts] = useState({ expiringTrials: 0, stalledTrials: 0, activatedTrials: 0 });
+  const [checkoutExceptions, setCheckoutExceptions] = useState<CheckoutException[]>([]);
+  const [retryingCheckout, setRetryingCheckout] = useState<string | null>(null);
   const [subscriptionTotal, setSubscriptionTotal] = useState(0);
   const [subscriptionPage, setSubscriptionPage] = useState(1);
   const [subscriptionPageSize, setSubscriptionPageSize] = useState(24);
@@ -442,21 +460,24 @@ export default function AdminPage() {
       optionalAdminLoad("users", api.get<{ users: AdminUser[] }>("/admin/users"), { users: [] }),
       optionalAdminLoad("audit logs", api.get<{ logs: AuditLog[] }>("/admin/audit-logs?limit=50"), { logs: [] }),
       optionalAdminLoad("reports", api.get<{ reports: Report[] }>("/reports/admin?limit=200"), { reports: [] }),
-      optionalAdminLoad<SubscriptionListResponse>("subscriptions", api.get<SubscriptionListResponse>("/subscription/admin?page=1&limit=24"), { shops: [], total: 0, page: 1, limit: 24, totalPages: 1, statusCounts: { trial: 0, active: 0, expired: 0, suspended: 0 } }),
+      optionalAdminLoad<SubscriptionListResponse>("subscriptions", api.get<SubscriptionListResponse>("/subscription/admin?page=1&limit=24"), { shops: [], supportQueue: [], operationalCounts: { expiringTrials: 0, stalledTrials: 0, activatedTrials: 0 }, total: 0, page: 1, limit: 24, totalPages: 1, statusCounts: { trial: 0, active: 0, expired: 0, suspended: 0 } }),
       optionalAdminLoad<AdminReferralListResponse>("referrals", api.get<AdminReferralListResponse>("/admin/referrals?page=1&limit=25"), { referrals: [], pagination: { page: 1, limit: 25, total: 0, totalPages: 1 } }),
       optionalAdminLoad("suppliers", api.get<{ suppliers: Supplier[] }>("/suppliers"), { suppliers: [] }),
       optionalAdminLoad("sync summary", api.get<{ shops: SyncShopSummary[] }>("/sync/admin/summary"), { shops: [] }),
       optionalAdminLoad("sync events", api.get<{ events: AdminSyncEvent[]; devices: AdminSyncDeviceRow[] }>("/sync/admin/events?limit=80"), { events: [], devices: [] }),
       optionalAdminLoad<NonNullable<AdminOverview["assistantAnalytics"]> | null>("assistant analytics", api.get<NonNullable<AdminOverview["assistantAnalytics"]>>("/assistant/admin/analytics"), null),
+      optionalAdminLoad("payment exceptions", api.get<{ checkouts: CheckoutException[] }>("/subscription/admin-checkouts/review"), { checkouts: [] }),
         ]);
       })
-      .then(([ov, u, al, rp, sub, referralData, supplierData, syncData, syncEventsData, assistantAnalytics]) => {
+      .then(([ov, u, al, rp, sub, referralData, supplierData, syncData, syncEventsData, assistantAnalytics, paymentExceptions]) => {
         if (cancelled) return;
         setOverview(ov && assistantAnalytics ? { ...ov, assistantAnalytics } : ov);
         setUsers(u.users);
         setAuditLogs(al.logs);
         setReports(rp.reports);
         setSubscriptions(sub.shops);
+        setSubscriptionSupportQueue(sub.supportQueue || []);
+        setSubscriptionOperationalCounts(sub.operationalCounts || { expiringTrials: 0, stalledTrials: 0, activatedTrials: 0 });
         setSubscriptionTotal(sub.total);
         setSubscriptionPage(sub.page);
         setSubscriptionPageSize(sub.limit);
@@ -470,6 +491,7 @@ export default function AdminPage() {
         setSyncSummaries(syncData.shops);
         setSyncEvents(syncEventsData.events);
         setSyncDevices(syncEventsData.devices);
+        setCheckoutExceptions(paymentExceptions.checkouts);
         setFollowUpDrafts(Object.fromEntries(sub.shops.map((shop) => [shop.id, shop.followUpNotes || ""])));
         setSupplierNotes(Object.fromEntries(supplierData.suppliers.map((supplier) => [supplier.id, supplier.adminNotes || ""])));
       })
@@ -598,12 +620,25 @@ export default function AdminPage() {
     if (search.trim()) params.set("search", search.trim());
     const data = await api.get<SubscriptionListResponse>(`/subscription/admin?${params.toString()}`);
     setSubscriptions(data.shops);
+    setSubscriptionSupportQueue(data.supportQueue || []);
+    setSubscriptionOperationalCounts(data.operationalCounts || { expiringTrials: 0, stalledTrials: 0, activatedTrials: 0 });
     setSubscriptionTotal(data.total);
     setSubscriptionPage(data.page);
     setSubscriptionPageSize(data.limit);
     setSubscriptionTotalPages(data.totalPages);
     setSubscriptionStatusCounts(data.statusCounts);
     setFollowUpDrafts(Object.fromEntries(data.shops.map((shop) => [shop.id, shop.followUpNotes || ""])));
+  }
+
+  async function retryCheckoutException(id: string) {
+    setRetryingCheckout(id);
+    try {
+      const data = await api.post<{ checkout: { status: string } }>(`/subscription/admin-checkouts/${id}/retry`, {});
+      if (data.checkout.status !== "REVIEW") setCheckoutExceptions((current) => current.filter((item) => item.id !== id));
+      await refreshSubscriptions();
+    } finally {
+      setRetryingCheckout(null);
+    }
   }
 
   function updateSubscriptionFilter(status: string) {
@@ -950,8 +985,8 @@ export default function AdminPage() {
   const trialShops = subscriptionStatusCounts.trial;
   const unpaidShops = subscriptionStatusCounts.expired;
   const suspendedShops = subscriptionStatusCounts.suspended;
-  const expiringTrials = subscriptions.filter((shop) => shop.computedStatus === "trial" && shop.daysLeft !== null && shop.daysLeft <= 3).length;
-  const activatedTrials = subscriptions.filter((shop) => shop.activation?.activated).length;
+  const expiringTrials = subscriptionOperationalCounts.expiringTrials;
+  const activatedTrials = subscriptionOperationalCounts.activatedTrials;
   const supportIssues = reports.filter((report) => report.status === "OPEN" || report.status === "IN_PROGRESS").length;
   const billingIssues = reports.filter((report) => report.type === "BILLING" && report.status !== "RESOLVED").length;
   const suspiciousAuditLogs = auditLogs.filter((log) =>
@@ -965,11 +1000,11 @@ export default function AdminPage() {
   const failedLogins = auditLogs.filter((log) => log.path.includes("/auth/login") && log.action.toLowerCase().includes("failed")).length;
   const failedSyncShops = syncSummaries.filter((shop) => shop.failed > 0).length;
   const failedSyncEvents = syncSummaries.reduce((sum, shop) => sum + shop.failed, 0);
-  const stalledTrials = subscriptions.filter((shop) => !shop.activation?.activated && shop.computedStatus === "trial").length;
+  const stalledTrials = subscriptionOperationalCounts.stalledTrials;
   const suppliersNeedingReview = suppliers.filter((supplier) => supplier.verificationStatus !== "VERIFIED").length;
   const verifiedSuppliers = suppliers.filter((supplier) => supplier.verificationStatus === "VERIFIED").length;
   const qualifiedReferrals = referrals.filter((referral) => referral.status === "QUALIFIED").length;
-  const shopsNeedingFollowUp = subscriptions
+  const shopsNeedingFollowUp = subscriptionSupportQueue
     .filter((shop) =>
       shop.computedStatus === "expired" ||
       shop.computedStatus === "suspended" ||
@@ -1406,8 +1441,8 @@ export default function AdminPage() {
                               <a href={whatsappLeadHref(shop)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-lg bg-green-100 px-2 py-1 text-xs font-semibold text-green-700 hover:bg-green-200">
                                 <MessageCircle className="h-3 w-3" /> WhatsApp
                               </a>
-                              <button onClick={() => setTab("subscriptions")} className="rounded-lg bg-gray-100 px-2 py-1 text-xs font-semibold text-gray-700 hover:bg-gray-200">
-                                View
+                              <button onClick={() => setSelectedSupportShop(shop)} className="rounded-lg bg-gray-100 px-2 py-1 text-xs font-semibold text-gray-700 hover:bg-gray-200">
+                                Details
                               </button>
                             </div>
                           </div>
@@ -1917,6 +1952,16 @@ export default function AdminPage() {
         {/* SUBSCRIPTIONS */}
         {tab === "subscriptions" && (
           <div>
+            {checkoutExceptions.length > 0 && <section className="mb-4 rounded-xl border border-amber-200 bg-amber-50 p-4">
+              <h2 className="text-sm font-semibold text-amber-950">Online payments needing review</h2>
+              <p className="mt-1 text-xs text-amber-800">Retry uses the original provider idempotency key, so it does not create a second payment request.</p>
+              <div className="mt-3 grid gap-2 lg:grid-cols-2">
+                {checkoutExceptions.map((item) => <div key={item.id} className="flex items-center justify-between gap-3 rounded-lg bg-white p-3 text-xs shadow-sm">
+                  <div><p className="font-semibold text-gray-950">{item.shop.name} - {item.plan}</p><p className="text-gray-500">{formatTZS(item.amount)} - {item.phone} - {item.providerId ? "Provider payment found" : "Provider ID missing"}</p></div>
+                  <button type="button" onClick={() => retryCheckoutException(item.id).catch((error) => window.alert(error instanceof Error ? error.message : "Retry failed"))} disabled={retryingCheckout === item.id} className="shrink-0 rounded-lg bg-amber-700 px-3 py-2 font-semibold text-white disabled:opacity-50">{retryingCheckout === item.id ? "Checking..." : "Retry safely"}</button>
+                </div>)}
+              </div>
+            </section>}
             <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <form onSubmit={submitSubscriptionSearch} className="flex w-full max-w-xl gap-2">
                 <label className="sr-only" htmlFor="subscription-search">Search subscriptions</label>
@@ -2692,6 +2737,20 @@ export default function AdminPage() {
             )}
           </div>
         )}
+        {selectedSupportShop && <div className="fixed inset-0 z-50 bg-gray-950/40" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setSelectedSupportShop(null); }}>
+          <aside role="dialog" aria-modal="true" aria-label="Shop support details" className="ml-auto flex h-full w-full max-w-md flex-col bg-white p-5 shadow-2xl">
+            <div className="flex items-start justify-between gap-3 border-b border-gray-200 pb-4">
+              <div><p className="text-xs font-semibold uppercase tracking-wide text-brand-700">Support shop</p><h2 className="mt-1 text-lg font-bold text-gray-950">{selectedSupportShop.name}</h2><p className="text-sm text-gray-500">{selectedSupportShop.user?.name || "Owner"} - {selectedSupportShop.user?.phone || "No phone"}</p></div>
+              <button type="button" aria-label="Close details" onClick={() => setSelectedSupportShop(null)} className="rounded-lg border border-gray-200 p-2 text-gray-500 hover:bg-gray-50"><X className="h-4 w-4" /></button>
+            </div>
+            <div className="flex-1 space-y-4 overflow-y-auto py-4 text-sm">
+              <div className="grid grid-cols-2 gap-2"><MiniMetric label="Products" value={selectedSupportShop.activation?.productCount || 0} tone="border-gray-200 bg-gray-50 text-gray-800" /><MiniMetric label="Sales" value={selectedSupportShop.activation?.salesCount || 0} tone="border-gray-200 bg-gray-50 text-gray-800" /></div>
+              <div className="rounded-lg border border-gray-200 p-3"><p className="font-semibold text-gray-900">{supportReason(selectedSupportShop)}</p><p className="mt-1 text-gray-500">{validityLabel(selectedSupportShop)}</p><p className="mt-1 text-gray-500">Support status: {selectedSupportShop.onboardingStatus}</p><p className="mt-1 text-gray-500">Last contacted: {selectedSupportShop.lastContactedAt ? new Date(selectedSupportShop.lastContactedAt).toLocaleString() : "Never"}</p></div>
+              <div className="rounded-lg border border-gray-200 p-3"><p className="font-semibold text-gray-900">Latest support note</p><p className="mt-1 whitespace-pre-wrap text-gray-600">{selectedSupportShop.followUpNotes || "No note recorded."}</p></div>
+            </div>
+            <div className="grid grid-cols-2 gap-2 border-t border-gray-200 pt-4"><a href={whatsappLeadHref(selectedSupportShop)} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center gap-1 rounded-lg bg-green-600 px-3 py-3 text-sm font-semibold text-white"><MessageCircle className="h-4 w-4" /> WhatsApp</a><button type="button" onClick={() => { setSelectedSupportShop(null); setTab("subscriptions"); }} className="rounded-lg bg-brand-700 px-3 py-3 text-sm font-semibold text-white">Open billing</button></div>
+          </aside>
+        </div>}
       </div>
     </AppShell>
   );

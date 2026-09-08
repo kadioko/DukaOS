@@ -6,6 +6,8 @@ const prismaPath = path.resolve(__dirname, "../src/lib/prisma.js");
 const shopAccessPath = path.resolve(__dirname, "../src/lib/shopAccess.js");
 const usageControllerPath = path.resolve(__dirname, "../src/controllers/usageEvent.controller.js");
 const pushControllerPath = path.resolve(__dirname, "../src/controllers/push.controller.js");
+const pushServicePath = path.resolve(__dirname, "../src/services/push.service.js");
+const webPushPath = require.resolve("web-push");
 
 function mockPrisma(prismaMock) {
   require.cache[prismaPath] = { id: prismaPath, filename: prismaPath, loaded: true, exports: prismaMock };
@@ -127,4 +129,33 @@ test("shop owners can save one alert preference without changing the others", as
   assert.deepEqual(saved, { lowStock: false });
   assert.equal(res.payload.preferences.lowStock, false);
   assert.equal(res.payload.preferences.debtDue, true);
+});
+
+test("push worker claims a delivery and does not deactivate a valid device after transient retry exhaustion", async () => {
+  process.env.VAPID_PUBLIC_KEY = "public";
+  process.env.VAPID_PRIVATE_KEY = "private";
+  process.env.VAPID_SUBJECT = "mailto:test@example.test";
+  let claimData;
+  let finalDeliveryData;
+  let subscriptionData;
+  require.cache[webPushPath] = { id: webPushPath, filename: webPushPath, loaded: true, exports: {
+    setVapidDetails() {},
+    async sendNotification() { throw Object.assign(new Error("Temporary provider error"), { statusCode: 503 }); },
+  } };
+  mockPrisma({
+    pushDelivery: {
+      findMany: async () => [{ id: "delivery-1", status: "RETRYING", kind: "LOW_STOCK", title: "Stock", body: "Details", href: "/inventory", attemptCount: 4, leaseExpiresAt: null, subscription: { id: "sub-1", isActive: true, endpoint: "https://push.example/1", p256dh: "p", auth: "a" }, shop: { notificationPreference: { lowStock: true, privatePreview: true } } }],
+      updateMany: async ({ data }) => { claimData = data; return { count: 1 }; },
+      update: async ({ data }) => { finalDeliveryData = data; return {}; },
+    },
+    pushSubscription: { update: async ({ data }) => { subscriptionData = data; return {}; } },
+    $transaction: async (operations) => Promise.all(operations),
+  });
+  delete require.cache[pushServicePath];
+  const { processPushDeliveries } = require(pushServicePath);
+  const result = await processPushDeliveries(10);
+  assert.equal(claimData.status, "SENDING");
+  assert.equal(finalDeliveryData.status, "FAILED");
+  assert.equal(subscriptionData.isActive, undefined);
+  assert.equal(result.failed, 1);
 });

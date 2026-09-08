@@ -156,6 +156,7 @@ function issueAccessToken(user, staff = null) {
       role: user.role,
       staffId: staff?.id,
       staffRole: staff?.role,
+      sessionVersion: staff?.sessionVersion ?? user.sessionVersion,
       permissions: staffPermissions(staff),
     },
     process.env.JWT_SECRET,
@@ -165,7 +166,7 @@ function issueAccessToken(user, staff = null) {
 
 function issueRefreshToken(user, staff = null) {
   return jwt.sign(
-    { userId: user.id, staffId: staff?.id, type: "refresh" },
+    { userId: user.id, staffId: staff?.id, sessionVersion: staff?.sessionVersion ?? user.sessionVersion, type: "refresh" },
     process.env.JWT_SECRET,
     { expiresIn: REFRESH_TOKEN_EXPIRY }
   );
@@ -405,6 +406,8 @@ const refresh = asyncHandler(async (req, res) => {
     staff = await prisma.staffMember.findFirst({ where: { id: payload.staffId, isActive: true } });
     if (!staff) return res.status(401).json({ error: "Staff access expired" });
   }
+  const currentSessionVersion = staff?.sessionVersion ?? user.sessionVersion;
+  if (payload.sessionVersion !== currentSessionVersion) return res.status(401).json({ error: "Session expired" });
 
   const newAccessToken = issueAccessToken(user, staff);
   setCookie(res, "dukapilot_token", newAccessToken, 60 * 60 * 1000);
@@ -479,9 +482,9 @@ const verifyOtpAndResetPin = asyncHandler(async (req, res) => {
   const user = await findByPhone(prisma.user, req.body.phone);
   const staff = user ? null : await findByPhone(prisma.staffMember, req.body.phone);
   if (user) {
-    await prisma.user.update({ where: { id: user.id }, data: { pin: hashedPin } });
+    await prisma.user.update({ where: { id: user.id }, data: { pin: hashedPin, sessionVersion: { increment: 1 } } });
   } else if (staff?.isActive) {
-    await prisma.staffMember.update({ where: { id: staff.id }, data: { pin: hashedPin } });
+    await prisma.staffMember.update({ where: { id: staff.id }, data: { pin: hashedPin, sessionVersion: { increment: 1 } } });
   } else {
     return res.status(404).json({ error: "User not found" });
   }

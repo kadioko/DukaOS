@@ -35,15 +35,19 @@ pending or mismatched payment grants nothing. Changed payment context goes to re
 ## Architecture and migration
 
 Shop remains the operational tenant boundary. The original Shop is the business
-root. Child shops reference parentShopId and inherit subscription state through a
-transactional PostgreSQL trigger. No existing sales or stock are reassigned.
+root. Child shops reference parentShopId. Authorization resolves the current plan,
+trial, paid-through date, and suspension state directly from that root on every
+request; copied child billing fields are not trusted. Branch archival is enforced
+separately, so an archived branch remains unavailable even when the root is paid.
+No existing sales or stock are reassigned.
 Owner requests use X-DukaPilot-Branch, checked server-side against ownership.
 Staff access is fixed to StaffMember.shopId. Billing always resolves the root.
 Product barcodes are unique within a location so branches can stock the same item.
 
-Apply 20260906120000_subscription_checkout first, then
-20260907090000_business_branches using backend `npm run db:deploy`. Deploy backend
-before frontend. Back up first and test both migrations on a restored staging DB.
+Apply 20260906120000_subscription_checkout, then
+20260907090000_business_branches and
+20260908090000_integrity_and_delivery_hardening using backend `npm run db:deploy`.
+Deploy backend before frontend. Back up first and test the migrations on a restored staging DB.
 Do not reverse the nullable owner field after creating branches; roll forward.
 No new branch environment variables are required.
 

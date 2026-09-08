@@ -1,6 +1,6 @@
 # Controlled Data Deletion Request Test
 
-Status: Completed - non-production process test
+Status: Public process test completed; database-backed synthetic test implemented for CI
 
 Request ID: `DUKA-DEL-TEST-20260825-001`
 
@@ -26,8 +26,15 @@ Completed by: DukaPilot Privacy Owner (platform admin)
 
 Outcome: The public intake, identity-verification requirements, deletion scope,
 30-day completion statement, partial-deletion option, and 90-day retention
-statement were verified. No real customer or production data was deleted for
-this controlled process test.
+statement were verified. The CI PostgreSQL test creates a synthetic owner, root shop,
+branch, customer, debt collection, subscription payment, and checkout; it then runs
+the production anonymization service and verifies that access and identifying data
+are removed while required financial records retain referential integrity. No real
+customer or production data is used.
+
+Automated evidence: `backend/tests/postgresIntegrity.test.js`, configured in the
+`postgres-integrity` CI job after applying all migrations to a disposable database.
+The test must pass in CI before recording the database workflow as completed evidence.
 
 ## Retention expiry
 

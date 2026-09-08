@@ -29,6 +29,40 @@ function quotationAction(type, quote, language) {
   return { id: `quotation-expiring-${quote.id}`, rank: 84, href: "/quotations?status=SENT", title: sw ? `${quote.quotationNumber} inaisha hivi karibuni` : `${quote.quotationNumber} expires soon`, body: sw ? `Fuatilia ${quote.customer.name} kuhusu ${quote.projectTitle} kabla ya bei kuisha.` : `Follow up with ${quote.customer.name} about ${quote.projectTitle} before it expires.`, action: sw ? "Fungua nukuu zilizotumwa" : "Open sent quotations" };
 }
 
+async function measureAction(shopId, actionKey) {
+  if (actionKey === "debt") {
+    const result = await prisma.debt.aggregate({ where: { shopId, status: { in: ["OPEN", "PARTIAL"] } }, _sum: { amount: true, amountPaid: true } });
+    return (result._sum.amount || 0) - (result._sum.amountPaid || 0);
+  }
+  if (actionKey.startsWith("staff-stock-")) {
+    const productId = actionKey.slice("staff-stock-".length);
+    const product = await prisma.product.findFirst({
+      where: { id: productId, shopId, isActive: true },
+      select: { currentStock: true, minimumStock: true },
+    });
+    return product ? Number(product.currentStock <= product.minimumStock) : 0;
+  }
+  if (actionKey === "stock") {
+    const rows = await prisma.$queryRaw`SELECT COUNT(*)::int AS count FROM "products" WHERE "shopId" = ${shopId} AND "isActive" = true AND "currentStock" <= "minimumStock"`;
+    return Number(rows[0]?.count || 0);
+  }
+  const quoteMatch = actionKey.match(/^quotation-(convert|deposit)-(.+)$/);
+  if (quoteMatch) {
+    const quote = await prisma.quotation.findFirst({ where: { id: quoteMatch[2], shopId }, select: { status: true, amountPaid: true, depositRequiredAmount: true } });
+    if (!quote) return null;
+    return quoteMatch[1] === "convert" ? Number(quote.status === "CONVERTED") : quote.amountPaid;
+  }
+  return null;
+}
+
+function outcomeVerified(actionKey, baseline, current) {
+  if (current === null) return false;
+  if (actionKey.startsWith("quotation-convert-")) return current === 1;
+  if (actionKey.startsWith("quotation-deposit-")) return baseline !== null && current > baseline;
+  if (["debt", "stock"].includes(actionKey) || actionKey.startsWith("staff-stock-")) return baseline !== null && current < baseline;
+  return false;
+}
+
 const quotationSummary = asyncHandler(async (req, res) => {
   const shopId = await getShopIdForUser(req.user);
   const requestedLanguage = String(req.headers?.["x-dukapilot-language"] || req.user.language || "sw").toLowerCase();
@@ -130,6 +164,10 @@ const trackAction = asyncHandler(async (req, res) => {
   }
 
   const now = new Date();
+  const existing = await prisma.assistantAction.findUnique({ where: { shopId_actionKey: { shopId, actionKey } } });
+  const measured = await measureAction(shopId, actionKey);
+  const baselineValue = existing?.baselineValue ?? measured;
+  const verified = status === "COMPLETED" && outcomeVerified(actionKey, baselineValue, measured);
   const action = await prisma.assistantAction.upsert({
     where: { shopId_actionKey: { shopId, actionKey } },
     create: {
@@ -141,6 +179,9 @@ const trackAction = asyncHandler(async (req, res) => {
       openedAt: status === "OPENED" ? now : null,
       completedAt: status === "COMPLETED" ? now : null,
       dismissedAt: status === "DISMISSED" ? now : null,
+      baselineValue,
+      outcomeValue: status === "COMPLETED" ? measured : null,
+      outcomeVerifiedAt: verified ? now : null,
     },
     update: {
       title,
@@ -149,6 +190,9 @@ const trackAction = asyncHandler(async (req, res) => {
       openedAt: status === "OPENED" ? now : undefined,
       completedAt: status === "COMPLETED" ? now : undefined,
       dismissedAt: status === "DISMISSED" ? now : undefined,
+      baselineValue,
+      outcomeValue: status === "COMPLETED" ? measured : undefined,
+      outcomeVerifiedAt: status === "COMPLETED" ? (verified ? now : null) : undefined,
     },
   });
 
@@ -156,7 +200,7 @@ const trackAction = asyncHandler(async (req, res) => {
     action: `assistant.action.${status.toLowerCase()}`,
     resourceType: "assistant_action",
     resourceId: action.id,
-    metadata: { shopId, actionKey, href },
+    metadata: { shopId, actionKey, href, verified, baselineValue, outcomeValue: measured },
   };
 
   res.status(201).json({ action });

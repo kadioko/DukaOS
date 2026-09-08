@@ -97,3 +97,31 @@ test("reconciliation activates once and never overrides suspension or pending pa
     assert.equal(denied, 403);
   } finally { ntzs.request = original; }
 });
+
+test("review recovery reuses the original checkout for provider idempotency", async () => {
+  const prismaPath = path.resolve(__dirname, "../src/lib/prisma.js");
+  const controllerPath = path.resolve(__dirname, "../src/controllers/subscriptionCheckout.controller.js");
+  const calls = [];
+  const record = { id: "11111111-1111-4111-8111-111111111111", shopId: "shop-1", phone: "+255700000001", amount: 15000, providerUserId: null };
+  require.cache[prismaPath] = { id: prismaPath, filename: prismaPath, loaded: true, exports: {
+    shop: { findUnique: async () => ({ id: "shop-1", user: { name: "Amina" } }) },
+    subscriptionCheckout: { update: async ({ data }) => Object.assign(record, data) },
+  } };
+  const original = ntzs.request;
+  ntzs.request = async (url, options) => {
+    calls.push({ url, options });
+    return { id: calls.length === 1 ? "22222222-2222-4222-8222-222222222222" : "33333333-3333-4333-8333-333333333333" };
+  };
+  delete require.cache[controllerPath];
+  try {
+    const { initiateProviderCheckout } = require(controllerPath);
+    const result = await initiateProviderCheckout(record);
+    assert.equal(calls[0].options.headers["Idempotency-Key"], `payer:${record.id}`);
+    assert.equal(calls[1].options.headers["Idempotency-Key"], record.id);
+    assert.equal(result.providerId, "33333333-3333-4333-8333-333333333333");
+    assert.equal(result.status, "PENDING");
+  } finally {
+    ntzs.request = original;
+    delete require.cache[controllerPath];
+  }
+});

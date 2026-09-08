@@ -120,7 +120,7 @@ const faqs = [
   },
   {
     q: { sw: "Ninaweza kubadilisha mpango?", en: "Can I upgrade or downgrade?" },
-    a: { sw: "Ndiyo, wakati wowote. Tofauti itahesabiwa kulingana na muda uliobaki.", en: "Yes, anytime. The difference is prorated." },
+    a: { sw: "Ndiyo. Wasiliana na support kubadilisha mpango unaoendelea; tutaweka muda uliolipiwa sawa kabla ya mabadiliko.", en: "Yes. Contact support to change an active plan; we will reconcile the prepaid period before switching it." },
   },
   {
     q: { sw: "Data yangu iko salama?", en: "Is my data safe?" },
@@ -200,10 +200,6 @@ export default function PricingPage() {
           <p className="text-gray-500 text-sm">{copy.subtitle[lang]}</p>
         </div>
 
-        <div className="mb-12">
-          <ProductProofSection />
-        </div>
-
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-12">
           {plans.map((plan) => (
             <div
@@ -275,6 +271,10 @@ export default function PricingPage() {
               </a>
             </div>
           ))}
+        </div>
+
+        <div className="mb-12">
+          <ProductProofSection />
         </div>
 
         <div className="bg-white rounded-2xl border border-gray-200 p-6 mb-10">

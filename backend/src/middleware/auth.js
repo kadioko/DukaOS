@@ -43,11 +43,18 @@ async function authenticate(req, res, next) {
   }
 
   try {
+    const account = await prisma.user.findUnique({
+      where: { id: payload.userId },
+      select: { id: true, role: true, sessionVersion: true },
+    });
+    if (!account) return res.status(401).json({ error: "Account access expired" });
+    payload.role = account.role;
     if (payload.staffId) {
       const staff = await prisma.staffMember.findFirst({
         where: { id: payload.staffId, isActive: true },
         select: {
           id: true,
+          sessionVersion: true,
           role: true,
           shopId: true,
           canSell: true,
@@ -68,12 +75,14 @@ async function authenticate(req, res, next) {
           canRecordQuotationPayments: true,
           canArchiveQuotations: true,
           canDeleteQuotationDrafts: true,
-          shop: { select: { userId: true, parentShopId: true, parentShop: { select: { userId: true } } } },
+          shop: { select: { userId: true, parentShopId: true, branchArchived: true, parentShop: { select: { userId: true } } } },
         },
       });
       if (!staff || (staff.shop.userId || staff.shop.parentShop?.userId) !== payload.userId) {
         return res.status(401).json({ error: "Staff access expired" });
       }
+      if (staff.shop.parentShopId && staff.shop.branchArchived) return res.status(403).json({ error: "This branch is archived" });
+      if (payload.sessionVersion !== staff.sessionVersion) return res.status(401).json({ error: "Session expired" });
       payload.shopId = staff.shopId;
       payload.businessShopId = staff.shop.parentShopId || staff.shopId;
       const requested = req.headers["x-dukapilot-branch"];
@@ -99,7 +108,7 @@ async function authenticate(req, res, next) {
         canArchiveQuotations: staff.canArchiveQuotations,
         canDeleteQuotationDrafts: staff.canDeleteQuotationDrafts,
       };
-    }
+    } else if (payload.sessionVersion !== account.sessionVersion) return res.status(401).json({ error: "Session expired" });
     payload.requestedShopId = typeof req.headers["x-dukapilot-branch"] === "string" ? req.headers["x-dukapilot-branch"] : undefined;
     if (payload.requestedShopId && !payload.staffId) {
       if (payload.requestedShopId.length > 100) return res.status(400).json({ error: "Invalid branch" });

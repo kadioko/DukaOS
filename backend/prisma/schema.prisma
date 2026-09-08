@@ -169,26 +169,27 @@ enum FarmProductionType {
 
 model User {
   branchTransfers BranchTransfer[]
-  id        String     @id @default(cuid())
-  phone     String     @unique
-  pin       String
-  name      String
-  role      Role       @default(MERCHANT)
-  language  String     @default("sw") // sw = Kiswahili, en = English
-  shop      Shop?
-  supplier  Supplier?
-  auditLogs AuditLog[]
-  reports   Report[]
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
+  id              String           @id @default(cuid())
+  phone           String           @unique
+  pin             String
+  name            String
+  role            Role             @default(MERCHANT)
+  language        String           @default("sw") // sw = Kiswahili, en = English
+  sessionVersion  Int              @default(1)
+  shop            Shop?
+  supplier        Supplier?
+  auditLogs       AuditLog[]
+  reports         Report[]
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
 
   @@map("users")
 }
 
 model Shop {
-  businessTransfers BranchTransfer[] @relation("TransferBusiness")
-  outgoingTransfers BranchTransfer[] @relation("TransferSourceShop")
-  incomingTransfers BranchTransfer[] @relation("TransferTargetShop")
+  businessTransfers        BranchTransfer[]        @relation("TransferBusiness")
+  outgoingTransfers        BranchTransfer[]        @relation("TransferSourceShop")
+  incomingTransfers        BranchTransfer[]        @relation("TransferTargetShop")
   id                       String                  @id @default(cuid())
   name                     String
   location                 String
@@ -266,19 +267,19 @@ model Shop {
 }
 
 model ShopReferral {
-  id             String   @id @default(cuid())
+  id             String    @id @default(cuid())
   referrerShopId String
-  referrerShop   Shop     @relation("ShopReferralReferrer", fields: [referrerShopId], references: [id], onDelete: Cascade)
-  referredShopId String   @unique
-  referredShop   Shop     @relation("ShopReferralReferred", fields: [referredShopId], references: [id], onDelete: Cascade)
+  referrerShop   Shop      @relation("ShopReferralReferrer", fields: [referrerShopId], references: [id], onDelete: Cascade)
+  referredShopId String    @unique
+  referredShop   Shop      @relation("ShopReferralReferred", fields: [referredShopId], references: [id], onDelete: Cascade)
   referralCode   String
-  status         String   @default("PENDING")
+  status         String    @default("PENDING")
   qualifiedAt    DateTime?
   rewardedAt     DateTime?
   rewardedBy     String?
   note           String?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
   @@index([referrerShopId, createdAt])
   @@index([status, createdAt])
@@ -303,35 +304,36 @@ model MarketingEvent {
 }
 
 model PinResetOtp {
-  phone       String   @id
-  codeHash    String
-  expiresAt   DateTime
-  attempts    Int      @default(0)
-  lastSentAt  DateTime
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  phone      String   @id
+  codeHash   String
+  expiresAt  DateTime
+  attempts   Int      @default(0)
+  lastSentAt DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
   @@index([expiresAt])
   @@map("pin_reset_otps")
 }
 
 model SubscriptionCheckout {
-  extraBranches Int @default(0)
-  kind String @default("RENEWAL")
+  extraBranches  Int       @default(0)
+  kind           String    @default("RENEWAL")
   expectedEndsAt DateTime?
-  id String @id @default(cuid())
-  shopId String
-  shop Shop @relation(fields: [shopId], references: [id], onDelete: Restrict)
-  requestKey String @unique
-  activeShopKey String? @unique
-  providerId String? @unique
+  id             String    @id @default(cuid())
+  shopId         String
+  shop           Shop      @relation(fields: [shopId], references: [id], onDelete: Restrict)
+  requestKey     String    @unique
+  activeShopKey  String?   @unique
+  providerId     String?   @unique
   providerUserId String?
-  plan String
-  amount Int
-  phone String
-  status String @default("PENDING")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  plan           String
+  amount         Int
+  phone          String
+  status         String    @default("PENDING")
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
   @@index([shopId, createdAt])
   @@index([status, updatedAt])
   @@map("subscription_checkouts")
@@ -386,19 +388,22 @@ model OfflineSyncEvent {
 }
 
 model AssistantAction {
-  id          String    @id @default(cuid())
-  shopId      String
-  shop        Shop      @relation(fields: [shopId], references: [id], onDelete: Cascade)
-  actionKey   String
-  title       String
-  href        String
-  status      String    @default("OPEN")
-  source      String    @default("ASSISTANT")
-  completedAt DateTime?
-  dismissedAt DateTime?
-  openedAt    DateTime?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id                String    @id @default(cuid())
+  shopId            String
+  shop              Shop      @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  actionKey         String
+  title             String
+  href              String
+  status            String    @default("OPEN")
+  source            String    @default("ASSISTANT")
+  completedAt       DateTime?
+  dismissedAt       DateTime?
+  openedAt          DateTime?
+  baselineValue     Int?
+  outcomeValue      Int?
+  outcomeVerifiedAt DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
   @@unique([shopId, actionKey])
   @@index([shopId, status])
@@ -438,6 +443,7 @@ model NotificationPreference {
   debtDue            Boolean  @default(true)
   subscriptionExpiry Boolean  @default(true)
   dailyAssistant     Boolean  @default(false)
+  privatePreview     Boolean  @default(true)
   updatedAt          DateTime @updatedAt
   createdAt          DateTime @default(now())
 
@@ -460,10 +466,13 @@ model PushDelivery {
   scheduledFor   DateTime          @default(now())
   sentAt         DateTime?
   retryAt        DateTime?
+  dedupeKey      String            @unique
+  leaseId        String?
+  leaseExpiresAt DateTime?
   createdAt      DateTime          @default(now())
   updatedAt      DateTime          @updatedAt
 
-  @@index([status, retryAt])
+  @@index([status, retryAt, leaseExpiresAt])
   @@index([shopId, createdAt])
   @@map("push_deliveries")
 }
@@ -499,9 +508,9 @@ model Supplier {
   user               User?                    @relation(fields: [userId], references: [id], onDelete: SetNull)
   products           Product[]
   quotationItems     QuotationItem[]
-    catalogProducts    SupplierCatalogProduct[]
-    orders             Order[]
-    stockReceipts      StockReceipt[]
+  catalogProducts    SupplierCatalogProduct[]
+  orders             Order[]
+  stockReceipts      StockReceipt[]
   createdAt          DateTime                 @default(now())
   updatedAt          DateTime                 @updatedAt
 
@@ -509,18 +518,18 @@ model Supplier {
 }
 
 model Customer {
-  id          String      @id @default(cuid())
-  name        String
-  phone       String?
-  email       String?
-  address     String?
-  notes       String?
-  shopId      String
-  shop        Shop        @relation(fields: [shopId], references: [id], onDelete: Cascade)
-  quotations  Quotation[]
-  sales       Sale[]
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  id         String      @id @default(cuid())
+  name       String
+  phone      String?
+  email      String?
+  address    String?
+  notes      String?
+  shopId     String
+  shop       Shop        @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  quotations Quotation[]
+  sales      Sale[]
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
 
   @@index([shopId, name])
   @@index([shopId, phone])
@@ -547,81 +556,81 @@ model Service {
 }
 
 model QuotationSettings {
-  id                         String   @id @default(cuid())
-  shopId                     String   @unique
-  shop                       Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
-  prefix                     String   @default("QT")
-  numberingFormat            String   @default("{prefix}-{number}")
-  defaultValidityDays         Int      @default(14)
-  defaultCurrency             String   @default("TZS")
-  defaultDocumentLanguage     String   @default("sw")
-  defaultTaxRateBasisPoints   Int      @default(0)
-  defaultPaymentTerms         String?
-  defaultTerms                String?
-  defaultCustomerNote         String?
-  signatureName               String?
-  signatureUrl                String?
-  showQuantities              Boolean  @default(true)
-  showUnitPrices              Boolean  @default(true)
-  showItemDiscounts           Boolean  @default(true)
-  showSections                Boolean  @default(true)
-  defaultDepositPercent       Int      @default(0)
-  createdAt                   DateTime @default(now())
-  updatedAt                   DateTime @updatedAt
+  id                        String   @id @default(cuid())
+  shopId                    String   @unique
+  shop                      Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  prefix                    String   @default("QT")
+  numberingFormat           String   @default("{prefix}-{number}")
+  defaultValidityDays       Int      @default(14)
+  defaultCurrency           String   @default("TZS")
+  defaultDocumentLanguage   String   @default("sw")
+  defaultTaxRateBasisPoints Int      @default(0)
+  defaultPaymentTerms       String?
+  defaultTerms              String?
+  defaultCustomerNote       String?
+  signatureName             String?
+  signatureUrl              String?
+  showQuantities            Boolean  @default(true)
+  showUnitPrices            Boolean  @default(true)
+  showItemDiscounts         Boolean  @default(true)
+  showSections              Boolean  @default(true)
+  defaultDepositPercent     Int      @default(0)
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
 
   @@map("quotation_settings")
 }
 
 model Quotation {
-  id                         String            @id @default(cuid())
-  quotationNumber            String
-  currentRevisionNumber      Int               @default(1)
-  status                     QuotationStatus   @default(DRAFT)
-  issueDate                  DateTime          @default(now())
-  expiryDate                 DateTime?
-  projectTitle               String
-  projectType                String?
-  scopeOfWork                String?
-  currency                   String            @default("TZS")
-  documentLanguage           String            @default("sw")
-  customerNote               String?
-  internalNote               String?
-  termsAndConditions         String?
-  paymentTerms               String?
-  discountAmount             Int               @default(0)
-  taxRateBasisPoints         Int               @default(0)
-  subtotalAmount             Int               @default(0)
-  taxAmount                  Int               @default(0)
-  totalAmount                Int               @default(0)
-  amountPaid                 Int               @default(0)
-  depositPercent             Int               @default(0)
-  depositRequiredAmount      Int               @default(0)
-  depositDueDate             DateTime?
-  sentAt                     DateTime?
-  acceptedAt                 DateTime?
-  acceptedByName             String?
-  acceptanceComment          String?
-  acceptanceSignature        String?
-  rejectedAt                 DateTime?
-  rejectionReason            String?
-  archivedAt                 DateTime?
-  cancelledAt                DateTime?
-  cancellationReason         String?
-  createdById                String
-  lastEditedById             String
-  customerId                 String
-  customer                   Customer          @relation(fields: [customerId], references: [id], onDelete: Restrict)
-  shopId                     String
-  shop                       Shop              @relation(fields: [shopId], references: [id], onDelete: Cascade)
-  sections                   QuotationSection[]
-  items                      QuotationItem[]
-  revisions                  QuotationRevision[]
-  shares                     QuotationShare[]
-  payments                   QuotationPayment[]
-  reminders                  QuotationReminder[]
-  convertedSale              Sale?
-  createdAt                  DateTime          @default(now())
-  updatedAt                  DateTime          @updatedAt
+  id                    String              @id @default(cuid())
+  quotationNumber       String
+  currentRevisionNumber Int                 @default(1)
+  status                QuotationStatus     @default(DRAFT)
+  issueDate             DateTime            @default(now())
+  expiryDate            DateTime?
+  projectTitle          String
+  projectType           String?
+  scopeOfWork           String?
+  currency              String              @default("TZS")
+  documentLanguage      String              @default("sw")
+  customerNote          String?
+  internalNote          String?
+  termsAndConditions    String?
+  paymentTerms          String?
+  discountAmount        Int                 @default(0)
+  taxRateBasisPoints    Int                 @default(0)
+  subtotalAmount        Int                 @default(0)
+  taxAmount             Int                 @default(0)
+  totalAmount           Int                 @default(0)
+  amountPaid            Int                 @default(0)
+  depositPercent        Int                 @default(0)
+  depositRequiredAmount Int                 @default(0)
+  depositDueDate        DateTime?
+  sentAt                DateTime?
+  acceptedAt            DateTime?
+  acceptedByName        String?
+  acceptanceComment     String?
+  acceptanceSignature   String?
+  rejectedAt            DateTime?
+  rejectionReason       String?
+  archivedAt            DateTime?
+  cancelledAt           DateTime?
+  cancellationReason    String?
+  createdById           String
+  lastEditedById        String
+  customerId            String
+  customer              Customer            @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  shopId                String
+  shop                  Shop                @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  sections              QuotationSection[]
+  items                 QuotationItem[]
+  revisions             QuotationRevision[]
+  shares                QuotationShare[]
+  payments              QuotationPayment[]
+  reminders             QuotationReminder[]
+  convertedSale         Sale?
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
 
   @@unique([shopId, quotationNumber])
   @@index([shopId, status, issueDate])
@@ -648,38 +657,38 @@ model QuotationSection {
 }
 
 model QuotationItem {
-  id                        String                @id @default(cuid())
-  quotationId               String
-  quotation                 Quotation             @relation(fields: [quotationId], references: [id], onDelete: Cascade)
-  sectionId                 String?
-  section                   QuotationSection?     @relation(fields: [sectionId], references: [id], onDelete: SetNull)
-  position                  Int
-  category                  QuotationItemCategory @default(OTHER)
-  name                      String
-  description               String?
-  quantityMilli             Int                   @default(1000)
-  unit                      String                @default("pcs")
-  unitPrice                 Int
-  discountAmount            Int                   @default(0)
-  taxRateBasisPoints        Int                   @default(0)
-  lineSubtotal              Int
-  taxAmount                 Int                   @default(0)
-  totalSellingPrice         Int
-  visibleToCustomer         Boolean               @default(true)
-  productId                 String?
-  product                   Product?              @relation(fields: [productId], references: [id], onDelete: SetNull)
-  serviceId                 String?
-  service                   Service?              @relation(fields: [serviceId], references: [id], onDelete: SetNull)
-  estimatedUnitCost         Int                   @default(0)
-  estimatedTotalCost        Int                   @default(0)
-  supplierId                String?
-  supplier                  Supplier?             @relation(fields: [supplierId], references: [id], onDelete: SetNull)
-  internalNote              String?
-  markupBasisPoints         Int                   @default(0)
-  estimatedProfit           Int                   @default(0)
-  estimatedProfitMarginBps  Int                   @default(0)
-  createdAt                 DateTime              @default(now())
-  updatedAt                 DateTime              @updatedAt
+  id                       String                @id @default(cuid())
+  quotationId              String
+  quotation                Quotation             @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  sectionId                String?
+  section                  QuotationSection?     @relation(fields: [sectionId], references: [id], onDelete: SetNull)
+  position                 Int
+  category                 QuotationItemCategory @default(OTHER)
+  name                     String
+  description              String?
+  quantityMilli            Int                   @default(1000)
+  unit                     String                @default("pcs")
+  unitPrice                Int
+  discountAmount           Int                   @default(0)
+  taxRateBasisPoints       Int                   @default(0)
+  lineSubtotal             Int
+  taxAmount                Int                   @default(0)
+  totalSellingPrice        Int
+  visibleToCustomer        Boolean               @default(true)
+  productId                String?
+  product                  Product?              @relation(fields: [productId], references: [id], onDelete: SetNull)
+  serviceId                String?
+  service                  Service?              @relation(fields: [serviceId], references: [id], onDelete: SetNull)
+  estimatedUnitCost        Int                   @default(0)
+  estimatedTotalCost       Int                   @default(0)
+  supplierId               String?
+  supplier                 Supplier?             @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  internalNote             String?
+  markupBasisPoints        Int                   @default(0)
+  estimatedProfit          Int                   @default(0)
+  estimatedProfitMarginBps Int                   @default(0)
+  createdAt                DateTime              @default(now())
+  updatedAt                DateTime              @updatedAt
 
   @@index([quotationId, position])
   @@index([productId])
@@ -687,15 +696,15 @@ model QuotationItem {
 }
 
 model QuotationRevision {
-  id                String   @id @default(cuid())
-  quotationId       String
-  quotation         Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
-  revisionNumber    Int
-  snapshot          Json
-  publicSnapshot    Json
-  changeSummary     String?
-  changedById       String
-  createdAt         DateTime @default(now())
+  id             String    @id @default(cuid())
+  quotationId    String
+  quotation      Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  revisionNumber Int
+  snapshot       Json
+  publicSnapshot Json
+  changeSummary  String?
+  changedById    String
+  createdAt      DateTime  @default(now())
 
   @@unique([quotationId, revisionNumber])
   @@index([quotationId, createdAt])
@@ -703,17 +712,17 @@ model QuotationRevision {
 }
 
 model QuotationShare {
-  id                String                @id @default(cuid())
-  quotationId       String
-  quotation         Quotation             @relation(fields: [quotationId], references: [id], onDelete: Cascade)
-  revisionNumber    Int
-  token             String                @unique
-  method            QuotationShareMethod
-  sentTo            String?
-  createdById       String
-  createdAt         DateTime              @default(now())
-  viewedAt          DateTime?
-  acceptedAt        DateTime?
+  id             String               @id @default(cuid())
+  quotationId    String
+  quotation      Quotation            @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  revisionNumber Int
+  token          String               @unique
+  method         QuotationShareMethod
+  sentTo         String?
+  createdById    String
+  createdAt      DateTime             @default(now())
+  viewedAt       DateTime?
+  acceptedAt     DateTime?
 
   @@index([quotationId, revisionNumber])
   @@index([quotationId, viewedAt])
@@ -721,22 +730,22 @@ model QuotationShare {
 }
 
 model QuotationPayment {
-  id                String                  @id @default(cuid())
-  quotationId       String
-  quotation         Quotation               @relation(fields: [quotationId], references: [id], onDelete: Cascade)
-  amount            Int
-  kind              QuotationPaymentKind    @default(PAYMENT)
-  stage             QuotationPaymentStage   @default(OTHER)
-  paymentMethod     PaymentMethod            @default(CASH)
-  paymentRef        String?
-  idempotencyKey    String?
-  note              String?
-  paidAt            DateTime                 @default(now())
-  recordedById      String
-  debtPaymentId     String?                  @unique
-  cashSessionId     String?
-  cashSession       CashSession?             @relation(fields: [cashSessionId], references: [id], onDelete: SetNull)
-  createdAt         DateTime                 @default(now())
+  id             String                @id @default(cuid())
+  quotationId    String
+  quotation      Quotation             @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  amount         Int
+  kind           QuotationPaymentKind  @default(PAYMENT)
+  stage          QuotationPaymentStage @default(OTHER)
+  paymentMethod  PaymentMethod         @default(CASH)
+  paymentRef     String?
+  idempotencyKey String?
+  note           String?
+  paidAt         DateTime              @default(now())
+  recordedById   String
+  debtPaymentId  String?               @unique
+  cashSessionId  String?
+  cashSession    CashSession?          @relation(fields: [cashSessionId], references: [id], onDelete: SetNull)
+  createdAt      DateTime              @default(now())
 
   @@unique([quotationId, idempotencyKey])
   @@index([quotationId, paidAt])
@@ -745,12 +754,12 @@ model QuotationPayment {
 }
 
 model QuotationReminder {
-  id                String                  @id @default(cuid())
-  quotationId       String
-  quotation         Quotation               @relation(fields: [quotationId], references: [id], onDelete: Cascade)
-  type              QuotationReminderType
-  revisionNumber    Int
-  sentAt            DateTime                @default(now())
+  id             String                @id @default(cuid())
+  quotationId    String
+  quotation      Quotation             @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  type           QuotationReminderType
+  revisionNumber Int
+  sentAt         DateTime              @default(now())
 
   @@unique([quotationId, type, revisionNumber])
   @@index([sentAt])
@@ -758,8 +767,8 @@ model QuotationReminder {
 }
 
 model Product {
-  outgoingTransfers BranchTransfer[] @relation("TransferSourceProduct")
-  incomingTransfers BranchTransfer[] @relation("TransferTargetProduct")
+  outgoingTransfers        BranchTransfer[]        @relation("TransferSourceProduct")
+  incomingTransfers        BranchTransfer[]        @relation("TransferTargetProduct")
   id                       String                  @id @default(cuid())
   name                     String
   sku                      String?
@@ -788,24 +797,24 @@ model Product {
   quotationItems           QuotationItem[]
   orderItems               OrderItem[]
   customerOrderItems       CustomerOrderItem[]
-    stockMovements           StockMovement[]
-    stockReceiptItems        StockReceiptItem[]
+  stockMovements           StockMovement[]
+  stockReceiptItems        StockReceiptItem[]
   barcodeScans             BarcodeScan[]
   stockCountItems          StockCountItem[]
-  foodRecipeOutputs        FoodRecipe[]           @relation("FoodRecipeOutput")
+  foodRecipeOutputs        FoodRecipe[]            @relation("FoodRecipeOutput")
   foodRecipeIngredients    FoodRecipeItem[]
-  foodPreparationOutputs   FoodPreparationBatch[] @relation("FoodPreparationOutput")
+  foodPreparationOutputs   FoodPreparationBatch[]  @relation("FoodPreparationOutput")
   foodPreparationInputs    FoodPreparationItem[]
-  farmProductionOutputs    FarmProductionBatch[] @relation("FarmProductionOutput")
-  farmProductionInputs     FarmProductionItem[] @relation("FarmProductionInput")
-  farmPackInputs           FarmPackConversion[] @relation("FarmPackInput")
-  farmPackOutputs          FarmPackConversion[] @relation("FarmPackOutput")
+  farmProductionOutputs    FarmProductionBatch[]   @relation("FarmProductionOutput")
+  farmProductionInputs     FarmProductionItem[]    @relation("FarmProductionInput")
+  farmPackInputs           FarmPackConversion[]    @relation("FarmPackInput")
+  farmPackOutputs          FarmPackConversion[]    @relation("FarmPackOutput")
   createdAt                DateTime                @default(now())
   updatedAt                DateTime                @updatedAt
 
   @@unique([shopId, supplierCatalogProductId])
-  @@index([shopId, isActive])
   @@unique([shopId, barcode])
+  @@index([shopId, isActive])
   @@map("products")
 }
 
@@ -875,23 +884,23 @@ model SupplierCatalogProduct {
 }
 
 model BranchTransfer {
-  business Shop @relation("TransferBusiness", fields: [businessId], references: [id], onDelete: Restrict)
-  sourceShop Shop @relation("TransferSourceShop", fields: [sourceShopId], references: [id], onDelete: Restrict)
-  targetShop Shop @relation("TransferTargetShop", fields: [targetShopId], references: [id], onDelete: Restrict)
-  sourceProduct Product @relation("TransferSourceProduct", fields: [sourceProductId], references: [id], onDelete: Restrict)
-  targetProduct Product @relation("TransferTargetProduct", fields: [targetProductId], references: [id], onDelete: Restrict)
-  creator User @relation(fields: [createdBy], references: [id], onDelete: Restrict)
-  id String @id @default(cuid())
-  businessId String
-  requestKey String
-  sourceShopId String
-  targetShopId String
+  business        Shop     @relation("TransferBusiness", fields: [businessId], references: [id], onDelete: Restrict)
+  sourceShop      Shop     @relation("TransferSourceShop", fields: [sourceShopId], references: [id], onDelete: Restrict)
+  targetShop      Shop     @relation("TransferTargetShop", fields: [targetShopId], references: [id], onDelete: Restrict)
+  sourceProduct   Product  @relation("TransferSourceProduct", fields: [sourceProductId], references: [id], onDelete: Restrict)
+  targetProduct   Product  @relation("TransferTargetProduct", fields: [targetProductId], references: [id], onDelete: Restrict)
+  creator         User     @relation(fields: [createdBy], references: [id], onDelete: Restrict)
+  id              String   @id @default(cuid())
+  businessId      String
+  requestKey      String
+  sourceShopId    String
+  targetShopId    String
   sourceProductId String
   targetProductId String
-  quantity Int
-  unitCost Int
-  createdBy String
-  createdAt DateTime @default(now())
+  quantity        Int
+  unitCost        Int
+  createdBy       String
+  createdAt       DateTime @default(now())
 
   @@unique([businessId, requestKey])
   @@index([businessId, createdAt])
@@ -899,52 +908,52 @@ model BranchTransfer {
 }
 
 model StockMovement {
-  id        String            @id @default(cuid())
-  type      StockMovementType
-  quantity  Int
-  note      String?
-    productId String
-    product   Product           @relation(fields: [productId], references: [id], onDelete: Cascade)
-    stockReceiptId String?
-    stockReceipt   StockReceipt? @relation(fields: [stockReceiptId], references: [id], onDelete: SetNull)
-    foodPreparationBatchId String?
-    foodPreparationBatch   FoodPreparationBatch? @relation(fields: [foodPreparationBatchId], references: [id], onDelete: SetNull)
-  createdAt DateTime          @default(now())
+  id                     String                @id @default(cuid())
+  type                   StockMovementType
+  quantity               Int
+  note                   String?
+  productId              String
+  product                Product               @relation(fields: [productId], references: [id], onDelete: Cascade)
+  stockReceiptId         String?
+  stockReceipt           StockReceipt?         @relation(fields: [stockReceiptId], references: [id], onDelete: SetNull)
+  foodPreparationBatchId String?
+  foodPreparationBatch   FoodPreparationBatch? @relation(fields: [foodPreparationBatchId], references: [id], onDelete: SetNull)
+  createdAt              DateTime              @default(now())
 
   @@index([productId, createdAt])
   @@map("stock_movements")
 }
 
 model Sale {
-  id              String        @id @default(cuid())
+  id              String         @id @default(cuid())
   totalAmount     Int
-  profit          Int           @default(0)
-  paymentMethod   PaymentMethod @default(CASH)
+  profit          Int            @default(0)
+  paymentMethod   PaymentMethod  @default(CASH)
   paymentRef      String? // M-Pesa transaction reference
-  channel         SaleChannel   @default(POS)
-  pricingTier     PricingTier   @default(RETAIL)
+  channel         SaleChannel    @default(POS)
+  pricingTier     PricingTier    @default(RETAIL)
   customerPhone   String?
   customerName    String?
   customerId      String?
-  customer        Customer?     @relation(fields: [customerId], references: [id], onDelete: SetNull)
-  quotationId     String?         @unique
-  quotation       Quotation?      @relation(fields: [quotationId], references: [id], onDelete: SetNull)
-  customerOrderId String?         @unique
-  customerOrder   CustomerOrder?  @relation(fields: [customerOrderId], references: [id], onDelete: SetNull)
+  customer        Customer?      @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  quotationId     String?        @unique
+  quotation       Quotation?     @relation(fields: [quotationId], references: [id], onDelete: SetNull)
+  customerOrderId String?        @unique
+  customerOrder   CustomerOrder? @relation(fields: [customerOrderId], references: [id], onDelete: SetNull)
   note            String?
   clientReference String?
   receiptNumber   Int?
-  status          String        @default("COMPLETED")
+  status          String         @default("COMPLETED")
   voidedAt        DateTime?
   voidReason      String?
-    voidedBy        String?
-    cashSessionId   String?
-    cashSession     CashSession? @relation(fields: [cashSessionId], references: [id], onDelete: SetNull)
+  voidedBy        String?
+  cashSessionId   String?
+  cashSession     CashSession?   @relation(fields: [cashSessionId], references: [id], onDelete: SetNull)
   shopId          String
-  shop            Shop          @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  shop            Shop           @relation(fields: [shopId], references: [id], onDelete: Cascade)
   items           SaleItem[]
   debt            Debt?
-  createdAt       DateTime      @default(now())
+  createdAt       DateTime       @default(now())
 
   @@unique([shopId, clientReference])
   @@unique([shopId, receiptNumber])
@@ -985,12 +994,14 @@ model DebtPayment {
   amount        Int
   paymentMethod PaymentMethod @default(CASH)
   paymentRef    String?
+  requestKey    String?
   note          String?
-    recordedBy    String?
-    cashSessionId String?
-    cashSession   CashSession? @relation(fields: [cashSessionId], references: [id], onDelete: SetNull)
+  recordedBy    String?
+  cashSessionId String?
+  cashSession   CashSession?  @relation(fields: [cashSessionId], references: [id], onDelete: SetNull)
   createdAt     DateTime      @default(now())
 
+  @@unique([debtId, requestKey])
   @@index([debtId, createdAt])
   @@index([cashSessionId, paymentMethod])
   @@map("debt_payments")
@@ -1005,10 +1016,10 @@ model Expense {
   note          String?
   paymentMethod PaymentMethod   @default(CASH)
   spentAt       DateTime        @default(now())
-    shopId        String
-    shop          Shop            @relation(fields: [shopId], references: [id], onDelete: Cascade)
-    cashSessionId String?
-    cashSession   CashSession?    @relation(fields: [cashSessionId], references: [id], onDelete: SetNull)
+  shopId        String
+  shop          Shop            @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  cashSessionId String?
+  cashSession   CashSession?    @relation(fields: [cashSessionId], references: [id], onDelete: SetNull)
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt
 
@@ -1038,53 +1049,54 @@ model RecurringExpense {
 }
 
 model StaffMember {
-  id                String    @id @default(cuid())
-  name              String
-  phone             String?   @unique
-  pin               String?
-  language          String    @default("sw")
-  role              StaffRole @default(CASHIER)
-  canSell           Boolean   @default(true)
-  canManageStock    Boolean   @default(false)
-  canManageFarm     Boolean   @default(false)
-  canManageStaff    Boolean   @default(false)
-  canViewReports    Boolean   @default(false)
-  canRecordExpenses Boolean   @default(false)
-  canUseAssistant   Boolean   @default(false)
-  canViewQuotations Boolean   @default(false)
-  canCreateQuotations Boolean @default(false)
-  canEditSentQuotations Boolean @default(false)
-  canViewQuotationCosts Boolean @default(false)
-  canApproveQuotationDiscounts Boolean @default(false)
-  canSendQuotations Boolean @default(false)
-  canAcceptQuotations Boolean @default(false)
-  canConvertQuotations Boolean @default(false)
-  canRecordQuotationPayments Boolean @default(false)
-  canArchiveQuotations Boolean @default(false)
-  canDeleteQuotationDrafts Boolean @default(false)
-  isActive          Boolean   @default(true)
-  shopId            String
-  shop              Shop      @relation(fields: [shopId], references: [id], onDelete: Cascade)
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
+  id                           String    @id @default(cuid())
+  name                         String
+  phone                        String?   @unique
+  pin                          String?
+  language                     String    @default("sw")
+  sessionVersion               Int       @default(1)
+  role                         StaffRole @default(CASHIER)
+  canSell                      Boolean   @default(true)
+  canManageStock               Boolean   @default(false)
+  canManageFarm                Boolean   @default(false)
+  canManageStaff               Boolean   @default(false)
+  canViewReports               Boolean   @default(false)
+  canRecordExpenses            Boolean   @default(false)
+  canUseAssistant              Boolean   @default(false)
+  canViewQuotations            Boolean   @default(false)
+  canCreateQuotations          Boolean   @default(false)
+  canEditSentQuotations        Boolean   @default(false)
+  canViewQuotationCosts        Boolean   @default(false)
+  canApproveQuotationDiscounts Boolean   @default(false)
+  canSendQuotations            Boolean   @default(false)
+  canAcceptQuotations          Boolean   @default(false)
+  canConvertQuotations         Boolean   @default(false)
+  canRecordQuotationPayments   Boolean   @default(false)
+  canArchiveQuotations         Boolean   @default(false)
+  canDeleteQuotationDrafts     Boolean   @default(false)
+  isActive                     Boolean   @default(true)
+  shopId                       String
+  shop                         Shop      @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  createdAt                    DateTime  @default(now())
+  updatedAt                    DateTime  @updatedAt
 
   @@index([shopId, role])
   @@map("staff_members")
 }
 
 model SaleItem {
-  id          String  @id @default(cuid())
-  quantity    Int
-  unitPrice   Int
-  buyingPrice Int
-  totalPrice  Int
-  saleId      String
-  sale        Sale    @relation(fields: [saleId], references: [id], onDelete: Cascade)
-  productId   String?
-  product     Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
-  name        String?
-  description String?
-  unit        String?
+  id                  String   @id @default(cuid())
+  quantity            Int
+  unitPrice           Int
+  buyingPrice         Int
+  totalPrice          Int
+  saleId              String
+  sale                Sale     @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  productId           String?
+  product             Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  name                String?
+  description         String?
+  unit                String?
   quotedQuantityMilli Int?
 
   @@index([saleId])
@@ -1093,18 +1105,18 @@ model SaleItem {
 }
 
 model Order {
-  id          String      @id @default(cuid())
-  status      OrderStatus @default(PENDING)
-  totalAmount Int?
-  note        String?
-  shopId      String
-  shop        Shop        @relation(fields: [shopId], references: [id], onDelete: Cascade)
-  supplierId  String
-  supplier    Supplier    @relation(fields: [supplierId], references: [id])
-    items       OrderItem[]
-    stockReceipt StockReceipt?
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  id           String        @id @default(cuid())
+  status       OrderStatus   @default(PENDING)
+  totalAmount  Int?
+  note         String?
+  shopId       String
+  shop         Shop          @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  supplierId   String
+  supplier     Supplier      @relation(fields: [supplierId], references: [id])
+  items        OrderItem[]
+  stockReceipt StockReceipt?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
 
   @@index([shopId, status])
   @@index([shopId, createdAt])
@@ -1112,26 +1124,26 @@ model Order {
 }
 
 model CashSession {
-  id             String            @id @default(cuid())
-  status         CashSessionStatus @default(OPEN)
-  openingCash    Int               @default(0)
-  expectedCash   Int?
-  countedCash    Int?
-  variance       Int?
-  note           String?
-  openedById     String
-  openedByName   String
-  openedAt       DateTime          @default(now())
-  closedAt       DateTime?
-  shopId         String
-  shop           Shop              @relation(fields: [shopId], references: [id], onDelete: Cascade)
-  sales          Sale[]
-  expenses       Expense[]
-  debtPayments   DebtPayment[]
-  quotationPayments QuotationPayment[]
-  stockReceipts     StockReceipt[]
+  id                     String                 @id @default(cuid())
+  status                 CashSessionStatus      @default(OPEN)
+  openingCash            Int                    @default(0)
+  expectedCash           Int?
+  countedCash            Int?
+  variance               Int?
+  note                   String?
+  openedById             String
+  openedByName           String
+  openedAt               DateTime               @default(now())
+  closedAt               DateTime?
+  shopId                 String
+  shop                   Shop                   @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  sales                  Sale[]
+  expenses               Expense[]
+  debtPayments           DebtPayment[]
+  quotationPayments      QuotationPayment[]
+  stockReceipts          StockReceipt[]
   foodPreparationBatches FoodPreparationBatch[]
-  farmProductionBatches FarmProductionBatch[]
+  farmProductionBatches  FarmProductionBatch[]
 
   @@index([shopId, status, openedAt])
   @@index([shopId, openedById, status])
@@ -1139,29 +1151,29 @@ model CashSession {
 }
 
 model StockReceipt {
-  id                 String             @id @default(cuid())
-  invoiceNumber      String?
-  paymentMethod      PaymentMethod      @default(CASH)
-  transportCost      Int                @default(0)
-  otherCost          Int                @default(0)
-  totalProductCost   Int
-  totalLandedCost    Int
-  allocationMode     String             @default("DIRECT")
-  estimatedAllocation Boolean           @default(false)
-  note               String?
-  receivedBy         String?
-  receivedAt         DateTime           @default(now())
-  shopId             String
-  shop               Shop               @relation(fields: [shopId], references: [id], onDelete: Cascade)
-  supplierId         String?
-  supplier           Supplier?          @relation(fields: [supplierId], references: [id], onDelete: SetNull)
-  sourceOrderId      String?            @unique
-  sourceOrder        Order?             @relation(fields: [sourceOrderId], references: [id], onDelete: SetNull)
-  cashSessionId      String?
-  cashSession        CashSession?       @relation(fields: [cashSessionId], references: [id], onDelete: SetNull)
-  items              StockReceiptItem[]
-  stockMovements     StockMovement[]
-  createdAt          DateTime           @default(now())
+  id                  String             @id @default(cuid())
+  invoiceNumber       String?
+  paymentMethod       PaymentMethod      @default(CASH)
+  transportCost       Int                @default(0)
+  otherCost           Int                @default(0)
+  totalProductCost    Int
+  totalLandedCost     Int
+  allocationMode      String             @default("DIRECT")
+  estimatedAllocation Boolean            @default(false)
+  note                String?
+  receivedBy          String?
+  receivedAt          DateTime           @default(now())
+  shopId              String
+  shop                Shop               @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  supplierId          String?
+  supplier            Supplier?          @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  sourceOrderId       String?            @unique
+  sourceOrder         Order?             @relation(fields: [sourceOrderId], references: [id], onDelete: SetNull)
+  cashSessionId       String?
+  cashSession         CashSession?       @relation(fields: [cashSessionId], references: [id], onDelete: SetNull)
+  items               StockReceiptItem[]
+  stockMovements      StockMovement[]
+  createdAt           DateTime           @default(now())
 
   @@index([shopId, receivedAt])
   @@index([supplierId, receivedAt])
@@ -1172,19 +1184,19 @@ model StockReceipt {
 // A reusable recipe describes expected ingredient usage. It does not move
 // stock or create costs: that happens only when a preparation batch is made.
 model FoodRecipe {
-  id              String           @id @default(cuid())
+  id              String                 @id @default(cuid())
   name            String
   instructions    String?
   expectedYield   Int
   shopId          String
-  shop            Shop             @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  shop            Shop                   @relation(fields: [shopId], references: [id], onDelete: Cascade)
   outputProductId String
-  outputProduct   Product          @relation("FoodRecipeOutput", fields: [outputProductId], references: [id], onDelete: Cascade)
-  isActive        Boolean          @default(true)
+  outputProduct   Product                @relation("FoodRecipeOutput", fields: [outputProductId], references: [id], onDelete: Cascade)
+  isActive        Boolean                @default(true)
   items           FoodRecipeItem[]
   batches         FoodPreparationBatch[]
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
+  createdAt       DateTime               @default(now())
+  updatedAt       DateTime               @updatedAt
 
   @@index([shopId, isActive, updatedAt])
   @@index([shopId, outputProductId])
@@ -1223,9 +1235,9 @@ model FoodPreparationBatch {
   totalCost          Int
   unitCost           Int
   additionalCostNote String?
-  paymentMethod      PaymentMethod      @default(CASH)
+  paymentMethod      PaymentMethod         @default(CASH)
   cashSessionId      String?
-  cashSession        CashSession?       @relation(fields: [cashSessionId], references: [id], onDelete: SetNull)
+  cashSession        CashSession?          @relation(fields: [cashSessionId], references: [id], onDelete: SetNull)
   note               String?
   preparedAt         DateTime              @default(now())
   preparedBy         String?
@@ -1310,30 +1322,30 @@ model FarmAnimalEvent {
 // A production batch consumes farm supplies and creates sellable output stock
 // such as individual eggs, milk in millilitres, or harvested animals.
 model FarmProductionBatch {
-  id                 String              @id @default(cuid())
+  id                 String               @id @default(cuid())
   shopId             String
-  shop               Shop                @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  shop               Shop                 @relation(fields: [shopId], references: [id], onDelete: Cascade)
   groupId            String
-  group              FarmGroup           @relation(fields: [groupId], references: [id], onDelete: Restrict)
-  type               FarmProductionType  @default(OTHER)
+  group              FarmGroup            @relation(fields: [groupId], references: [id], onDelete: Restrict)
+  type               FarmProductionType   @default(OTHER)
   outputProductId    String
-  outputProduct      Product             @relation("FarmProductionOutput", fields: [outputProductId], references: [id], onDelete: Restrict)
+  outputProduct      Product              @relation("FarmProductionOutput", fields: [outputProductId], references: [id], onDelete: Restrict)
   expectedYield      Int
   actualYield        Int
-  wasteQuantity      Int                 @default(0)
+  wasteQuantity      Int                  @default(0)
   ingredientCost     Int
-  additionalCost     Int                 @default(0)
+  additionalCost     Int                  @default(0)
   totalCost          Int
   unitCost           Int
   additionalCostNote String?
-  paymentMethod      PaymentMethod       @default(CASH)
+  paymentMethod      PaymentMethod        @default(CASH)
   cashSessionId      String?
-  cashSession        CashSession?        @relation(fields: [cashSessionId], references: [id], onDelete: SetNull)
+  cashSession        CashSession?         @relation(fields: [cashSessionId], references: [id], onDelete: SetNull)
   note               String?
-  producedAt         DateTime            @default(now())
+  producedAt         DateTime             @default(now())
   producedBy         String?
   items              FarmProductionItem[]
-  createdAt          DateTime            @default(now())
+  createdAt          DateTime             @default(now())
 
   @@index([shopId, producedAt])
   @@index([shopId, outputProductId, producedAt])
@@ -1343,11 +1355,11 @@ model FarmProductionBatch {
 }
 
 model FarmProductionItem {
-  id               String               @id @default(cuid())
+  id               String              @id @default(cuid())
   farmProductionId String
-  farmProduction   FarmProductionBatch  @relation(fields: [farmProductionId], references: [id], onDelete: Cascade)
+  farmProduction   FarmProductionBatch @relation(fields: [farmProductionId], references: [id], onDelete: Cascade)
   productId        String
-  product          Product              @relation("FarmProductionInput", fields: [productId], references: [id], onDelete: Restrict)
+  product          Product             @relation("FarmProductionInput", fields: [productId], references: [id], onDelete: Restrict)
   quantity         Int
   unitCost         Int
   totalCost        Int
@@ -1360,21 +1372,21 @@ model FarmProductionItem {
 // Packaging keeps one base stock unit accurate. A layer farm can convert 30
 // individual eggs into one tray without creating imaginary purchased stock.
 model FarmPackConversion {
-  id              String    @id @default(cuid())
+  id              String   @id @default(cuid())
   shopId          String
-  shop            Shop      @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  shop            Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
   inputProductId  String
-  inputProduct    Product   @relation("FarmPackInput", fields: [inputProductId], references: [id], onDelete: Restrict)
+  inputProduct    Product  @relation("FarmPackInput", fields: [inputProductId], references: [id], onDelete: Restrict)
   outputProductId String
-  outputProduct   Product   @relation("FarmPackOutput", fields: [outputProductId], references: [id], onDelete: Restrict)
+  outputProduct   Product  @relation("FarmPackOutput", fields: [outputProductId], references: [id], onDelete: Restrict)
   inputQuantity   Int
   outputQuantity  Int
   totalCost       Int
   unitCost        Int
   note            String?
-  convertedAt     DateTime  @default(now())
+  convertedAt     DateTime @default(now())
   convertedBy     String?
-  createdAt       DateTime  @default(now())
+  createdAt       DateTime @default(now())
 
   @@index([shopId, convertedAt])
   @@index([inputProductId])
@@ -1383,17 +1395,17 @@ model FarmPackConversion {
 }
 
 model StockReceiptItem {
-  id                     String       @id @default(cuid())
-  quantity               Int
-  unitCost               Int
-  productCost            Int
+  id                      String       @id @default(cuid())
+  quantity                Int
+  unitCost                Int
+  productCost             Int
   allocatedAdditionalCost Int
-  landedTotalCost        Int
-  landedUnitCost         Int
-  stockReceiptId         String
-  stockReceipt           StockReceipt @relation(fields: [stockReceiptId], references: [id], onDelete: Cascade)
-  productId              String
-  product                Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
+  landedTotalCost         Int
+  landedUnitCost          Int
+  stockReceiptId          String
+  stockReceipt            StockReceipt @relation(fields: [stockReceiptId], references: [id], onDelete: Cascade)
+  productId               String
+  product                 Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   @@index([stockReceiptId])
   @@index([productId])

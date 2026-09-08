@@ -44,7 +44,10 @@ Prices are server controlled whole TZS. Owners only, scoped to their shop; expir
 subscriptions may pay, deliberately suspended shops must contact support.
 One open checkout per shop prevents concurrent new prompts. The original request
 key and provider idempotency key are persisted before initiating collection.
-Initiation timeouts remain REVIEW with the lock intact: do not retry with a new key.
+Initiation timeouts remain REVIEW with the lock intact. Owners and administrators
+can retry/reconcile that same checkout; the backend reuses the original checkout ID
+and provider idempotency keys and records the action in the audit log. Never create
+a new checkout merely because the first provider response was lost.
 Provider readback verifies deposit ID, amount and payment method. Webhooks require
 a valid signature and live event, then perform the same authenticated readback.
 No redirect, browser assertion, manual reference or unverified webhook activates access.
@@ -55,14 +58,15 @@ are one transaction. Pending records do not enter confirmed-payment statistics.
 
 - One-month purchases only. Changes between prepaid plans require support; no
   automatic proration or conversion of Basic months into Pro months.
-- Failed collections require support before another attempt; review/unknown
-  outcomes must be matched with nTZS before releasing the pending lock.
+- Failed collections require support before another attempt. Review/unknown outcomes
+  appear in the administrator payment-exceptions queue and must be reconciled against
+  nTZS before the pending lock can be released.
 - No automatic refund, recurring debit mandate, hosted card checkout or merchant
   wallet features are implemented. The backend creates a provider payer reference
   per checkout because nTZS requires it, then collects to DukaPilot's treasury.
-- Webhook delivery is the background completion path; owners can also check
-  manually. A scheduled reconciliation worker and admin checkout review UI remain
-  required follow-up work for robust operational recovery.
+- Webhook delivery is the background completion path; owners can also check or retry
+  the original checkout manually. The admin review queue supports the same safe retry.
+  A scheduled provider-wide reconciliation worker remains a future reliability upgrade.
 - Lost initiation responses without a deposit ID need provider-assisted matching
   using the saved checkout ID/idempotency key. Never guess a match by amount alone.
 - Manual payment recording and online renewals now share shop row-lock discipline.
@@ -71,11 +75,9 @@ are one transaction. Pending records do not enter confirmed-payment statistics.
 
 ## Acceptance checklist
 
-Local verification: existing backend suite 112/112 passed; payment-focused suite
-7/7 passed (includes 2 existing subscription tests); browser billing tests 2/2
-passed; TypeScript and Prisma schema validation passed. Browser tests use mocks,
-not real charges. PostgreSQL integration/concurrency and live settlement are not
-yet verified.
+The repository now runs the full mocked backend suite, payment tests, browser billing
+tests, TypeScript and Prisma validation in CI. Browser tests use mocks, not real
+charges. Live provider settlement still requires the controlled acceptance checks below.
 
 - Apply migration to a disposable database; verify rollback on payment insertion failure.
 - Concurrent duplicate check/webhook: exactly one payment and one month added.

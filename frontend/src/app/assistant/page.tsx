@@ -59,6 +59,7 @@ interface AssistantAction {
   openedAt?: string | null;
   completedAt?: string | null;
   dismissedAt?: string | null;
+  outcomeVerifiedAt?: string | null;
   updatedAt: string;
 }
 
@@ -289,6 +290,7 @@ export default function AssistantPage() {
                                 (lang === "sw" ? "Wazi" : "Open")}
                         </span>
                       )}
+                      {status?.outcomeVerifiedAt && <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-700">{lang === "sw" ? "Matokeo yamethibitishwa" : "Outcome verified"}</span>}
                     </div>
                     <h3 className="mt-1 font-semibold text-gray-950">{item.title}</h3>
                     <p className="mt-1 text-sm leading-6 text-gray-600">{item.body}</p>

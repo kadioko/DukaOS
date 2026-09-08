@@ -12,7 +12,7 @@ async function getShopIdForUser(user) {
   const shop = await prisma.shop.findUnique({ where: { userId: user.userId } });
   if (!shop) throw Object.assign(new Error("Shop not found"), { status: 404 });
   if (user.requestedShopId && user.requestedShopId !== shop.id) {
-    const branch = await prisma.shop.findFirst({ where: { id: user.requestedShopId, parentShopId: shop.id } });
+    const branch = await prisma.shop.findFirst({ where: { id: user.requestedShopId, parentShopId: shop.id, branchArchived: false } });
     if (!branch) throw Object.assign(new Error("Branch not found"), { status: 403 });
     return branch.id;
   }

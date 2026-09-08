@@ -1,5 +1,5 @@
 const prisma = require("../lib/prisma");
-const { getShopIdForUser } = require("../lib/shopAccess");
+const { getShopIdForUser, getBillingShopIdForUser } = require("../lib/shopAccess");
 
 function isSubscriptionActive(shop) {
   const now = new Date();
@@ -14,13 +14,22 @@ function requireActiveSubscription(req, res, next) {
 
   Promise.resolve()
     .then(async () => {
-      const shopId = await getShopIdForUser(req.user);
-      const shop = await prisma.shop.findUnique({
-        where: { id: shopId },
+      const [operatingShopId, billingShopId] = await Promise.all([
+        getShopIdForUser(req.user),
+        getBillingShopIdForUser(req.user),
+      ]);
+      const [operatingShop, billingShop] = await Promise.all([
+        prisma.shop.findUnique({ where: { id: operatingShopId }, select: { id: true, name: true, parentShopId: true, branchArchived: true } }),
+        prisma.shop.findUnique({
+        where: { id: billingShopId },
         select: { id: true, name: true, plan: true, trialEndsAt: true, subscriptionEndsAt: true, isActive: true },
-      });
-      if (!shop) return res.status(404).json({ error: "Shop not found" });
-      if (isSubscriptionActive(shop)) return next();
+        }),
+      ]);
+      if (!operatingShop || !billingShop) return res.status(404).json({ error: "Shop not found" });
+      if (operatingShop.parentShopId && operatingShop.branchArchived) {
+        return res.status(403).json({ error: "This branch is archived. Select an active branch before recording changes." });
+      }
+      if (isSubscriptionActive(billingShop)) return next();
 
       return res.status(402).json({
         error: "Subscription required",

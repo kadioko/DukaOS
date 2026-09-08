@@ -1,4 +1,5 @@
 const webpush = require("web-push");
+const crypto = require("node:crypto");
 const prisma = require("../lib/prisma");
 const { isSubscriptionActive } = require("../middleware/subscription");
 
@@ -20,23 +21,24 @@ function retryAt(attemptCount) {
 }
 
 async function queueForShop(shopId, kind, message) {
-  const since = new Date(Date.now() - DAY_MS);
-  const alreadyQueued = await prisma.pushDelivery.findFirst({
-    where: { shopId, kind, createdAt: { gte: since }, status: { in: ["QUEUED", "RETRYING", "SENT"] } },
-    select: { id: true },
-  });
-  if (alreadyQueued) return false;
-
   const subscriptions = await prisma.pushSubscription.findMany({
     where: { shopId, isActive: true },
     select: { id: true },
   });
   if (!subscriptions.length) return false;
 
-  await prisma.pushDelivery.createMany({
-    data: subscriptions.map((subscription) => ({ shopId, subscriptionId: subscription.id, kind, ...message })),
+  const dayKey = new Date().toISOString().slice(0, 10);
+  const created = await prisma.pushDelivery.createMany({
+    data: subscriptions.map((subscription) => ({
+      shopId,
+      subscriptionId: subscription.id,
+      kind,
+      dedupeKey: `${dayKey}:${shopId}:${subscription.id}:${kind}`,
+      ...message,
+    })),
+    skipDuplicates: true,
   });
-  return true;
+  return created.count > 0;
 }
 
 async function queueShopAlerts({ afterId = null, limit = 100 } = {}) {
@@ -49,6 +51,8 @@ async function queueShopAlerts({ afterId = null, limit = 100 } = {}) {
       trialEndsAt: true,
       subscriptionEndsAt: true,
       isActive: true,
+      user: { select: { language: true } },
+      parentShop: { select: { user: { select: { language: true } } } },
       notificationPreference: true,
       products: { where: { isActive: true }, select: { name: true, currentStock: true, minimumStock: true } },
       debts: { where: { status: { in: ["OPEN", "PARTIAL"] } }, select: { amount: true, amountPaid: true, dueDate: true } },
@@ -62,12 +66,13 @@ async function queueShopAlerts({ afterId = null, limit = 100 } = {}) {
   const expiryWindow = new Date(now.getTime() + 7 * DAY_MS);
 
   for (const shop of shops) {
+    const sw = (shop.user?.language || shop.parentShop?.user?.language || "sw") !== "en";
     const preference = shop.notificationPreference || { lowStock: true, debtDue: true, subscriptionExpiry: true, dailyAssistant: false };
     const lowStock = shop.products.filter((product) => product.currentStock <= product.minimumStock);
     if (preference.lowStock && lowStock.length) {
       queued += Number(await queueForShop(shop.id, "LOW_STOCK", {
-        title: "DukaPilot: stock needs attention",
-        body: `${lowStock[0].name}${lowStock.length > 1 ? ` and ${lowStock.length - 1} more item${lowStock.length === 2 ? "" : "s"}` : ""} need restocking.`,
+        title: sw ? "DukaPilot: stock inahitaji uangalizi" : "DukaPilot: stock needs attention",
+        body: sw ? `${lowStock[0].name}${lowStock.length > 1 ? ` na bidhaa nyingine ${lowStock.length - 1}` : ""} inahitaji kuagizwa.` : `${lowStock[0].name}${lowStock.length > 1 ? ` and ${lowStock.length - 1} more item${lowStock.length === 2 ? "" : "s"}` : ""} need restocking.`,
         href: "/inventory?lowStock=true",
       }));
     }
@@ -76,8 +81,8 @@ async function queueShopAlerts({ afterId = null, limit = 100 } = {}) {
     if (preference.debtDue && overdue.length) {
       const outstanding = overdue.reduce((total, debt) => total + debt.amount - debt.amountPaid, 0);
       queued += Number(await queueForShop(shop.id, "DEBT_DUE", {
-        title: "DukaPilot: collect customer debt",
-        body: `TZS ${outstanding.toLocaleString("en-TZ")} is due from ${overdue.length} customer${overdue.length === 1 ? "" : "s"}.`,
+        title: sw ? "DukaPilot: fuatilia deni la mteja" : "DukaPilot: collect customer debt",
+        body: sw ? `TZS ${outstanding.toLocaleString("en-TZ")} inadaiwa kutoka kwa wateja ${overdue.length}.` : `TZS ${outstanding.toLocaleString("en-TZ")} is due from ${overdue.length} customer${overdue.length === 1 ? "" : "s"}.`,
         href: "/debts?status=open",
       }));
     }
@@ -85,8 +90,10 @@ async function queueShopAlerts({ afterId = null, limit = 100 } = {}) {
     const expiry = shop.plan === "FREE_TRIAL" ? shop.trialEndsAt : shop.subscriptionEndsAt;
     if (preference.subscriptionExpiry && (!isSubscriptionActive(shop) || (expiry && expiry <= expiryWindow))) {
       queued += Number(await queueForShop(shop.id, "SUBSCRIPTION", {
-        title: "DukaPilot: subscription action needed",
-        body: !isSubscriptionActive(shop) ? "Your shop needs reactivation to keep recording sales." : "Your plan ends soon. Send payment details to keep the shop active.",
+        title: sw ? "DukaPilot: mpango unahitaji hatua" : "DukaPilot: subscription action needed",
+        body: !isSubscriptionActive(shop)
+          ? (sw ? "Duka linahitaji kuhuishwa ili kuendelea kurekodi mauzo." : "Your shop needs reactivation to keep recording sales.")
+          : (sw ? "Mpango unaisha hivi karibuni. Tuma taarifa za malipo ili duka liendelee." : "Your plan ends soon. Send payment details to keep the shop active."),
         href: "/billing",
       }));
     }
@@ -94,7 +101,7 @@ async function queueShopAlerts({ afterId = null, limit = 100 } = {}) {
     const action = shop.assistantActions[0];
     if (preference.dailyAssistant && action) {
       queued += Number(await queueForShop(shop.id, "DAILY_ASSISTANT", {
-        title: "DukaPilot AI priority",
+        title: sw ? "Kipaumbele cha DukaPilot AI" : "DukaPilot AI priority",
         body: action.title,
         href: action.href || "/assistant",
       }));
@@ -108,34 +115,62 @@ async function processPushDeliveries(limit = 100) {
   const now = new Date();
   const deliveries = await prisma.pushDelivery.findMany({
     where: {
-      status: { in: ["QUEUED", "RETRYING"] },
-      OR: [{ retryAt: null }, { retryAt: { lte: now } }],
+      OR: [
+        { status: { in: ["QUEUED", "RETRYING"] }, retryAt: null, leaseExpiresAt: null },
+        { status: { in: ["QUEUED", "RETRYING"] }, retryAt: { lte: now }, OR: [{ leaseExpiresAt: null }, { leaseExpiresAt: { lte: now } }] },
+        { status: "SENDING", leaseExpiresAt: { lte: now } },
+      ],
     },
-    include: { subscription: true },
+    include: {
+      subscription: true,
+      shop: {
+        select: {
+          notificationPreference: true,
+          user: { select: { language: true } },
+          parentShop: { select: { user: { select: { language: true } } } },
+        },
+      },
+    },
     orderBy: { createdAt: "asc" },
     take: Math.min(Math.max(Number(limit) || 100, 1), 500),
   });
   let sent = 0;
   let failed = 0;
   for (const delivery of deliveries) {
+    const leaseId = crypto.randomUUID();
+    const claimed = await prisma.pushDelivery.updateMany({
+      where: { id: delivery.id, status: delivery.status, OR: [{ leaseExpiresAt: null }, { leaseExpiresAt: { lte: now } }] },
+      data: { status: "SENDING", leaseId, leaseExpiresAt: new Date(Date.now() + 5 * 60 * 1000) },
+    });
+    if (claimed.count !== 1) continue;
     const subscription = delivery.subscription;
     if (!subscription || !subscription.isActive) {
-      await prisma.pushDelivery.update({ where: { id: delivery.id }, data: { status: "SKIPPED", lastError: "Inactive subscription" } });
+      await prisma.pushDelivery.update({ where: { id: delivery.id }, data: { status: "SKIPPED", lastError: "Inactive subscription", leaseId: null, leaseExpiresAt: null } });
+      continue;
+    }
+    const preferenceKey = { LOW_STOCK: "lowStock", DEBT_DUE: "debtDue", SUBSCRIPTION: "subscriptionExpiry", DAILY_ASSISTANT: "dailyAssistant" }[delivery.kind];
+    const preferences = delivery.shop?.notificationPreference;
+    if (preferenceKey && preferences && preferences[preferenceKey] === false) {
+      await prisma.pushDelivery.update({ where: { id: delivery.id }, data: { status: "SKIPPED", lastError: "Alert preference disabled", leaseId: null, leaseExpiresAt: null } });
       continue;
     }
     try {
-      await webpush.sendNotification({ endpoint: subscription.endpoint, keys: { p256dh: subscription.p256dh, auth: subscription.auth } }, JSON.stringify({ title: delivery.title, body: delivery.body, href: delivery.href, tag: delivery.kind }));
+      const hideDetails = preferences?.privatePreview !== false;
+      const language = delivery.shop?.user?.language || delivery.shop?.parentShop?.user?.language || "sw";
+      const privateBody = language === "en" ? "Open DukaPilot to view this shop update." : "Fungua DukaPilot kuona taarifa hii ya duka.";
+      await webpush.sendNotification({ endpoint: subscription.endpoint, keys: { p256dh: subscription.p256dh, auth: subscription.auth } }, JSON.stringify({ title: delivery.title, body: hideDetails ? privateBody : delivery.body, href: delivery.href, tag: delivery.kind }));
       await prisma.$transaction([
-        prisma.pushDelivery.update({ where: { id: delivery.id }, data: { status: "SENT", sentAt: new Date(), attemptCount: { increment: 1 }, lastError: null } }),
+        prisma.pushDelivery.update({ where: { id: delivery.id }, data: { status: "SENT", sentAt: new Date(), attemptCount: { increment: 1 }, lastError: null, leaseId: null, leaseExpiresAt: null } }),
         prisma.pushSubscription.update({ where: { id: subscription.id }, data: { lastSeenAt: new Date(), failureCount: 0 } }),
       ]);
       sent += 1;
     } catch (error) {
       const statusCode = Number(error.statusCode || error.status);
-      const terminal = statusCode === 404 || statusCode === 410 || delivery.attemptCount >= 4;
+      const invalidSubscription = statusCode === 404 || statusCode === 410;
+      const terminal = invalidSubscription || delivery.attemptCount >= 4;
       await prisma.$transaction([
-        prisma.pushDelivery.update({ where: { id: delivery.id }, data: { status: terminal ? "FAILED" : "RETRYING", attemptCount: { increment: 1 }, lastError: String(error.message || "Push delivery failed").slice(0, 500), retryAt: terminal ? null : retryAt(delivery.attemptCount + 1) } }),
-        prisma.pushSubscription.update({ where: { id: subscription.id }, data: terminal ? { isActive: false, failureCount: { increment: 1 } } : { failureCount: { increment: 1 } } }),
+        prisma.pushDelivery.update({ where: { id: delivery.id }, data: { status: terminal ? "FAILED" : "RETRYING", attemptCount: { increment: 1 }, lastError: String(error.message || "Push delivery failed").slice(0, 500), retryAt: terminal ? null : retryAt(delivery.attemptCount + 1), leaseId: null, leaseExpiresAt: null } }),
+        prisma.pushSubscription.update({ where: { id: subscription.id }, data: invalidSubscription ? { isActive: false, failureCount: { increment: 1 } } : { failureCount: { increment: 1 } } }),
       ]);
       failed += 1;
     }

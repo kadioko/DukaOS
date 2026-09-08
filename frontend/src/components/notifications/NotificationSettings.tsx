@@ -5,7 +5,7 @@ import { AlertTriangle, Bell, BellOff, Check, Info, LoaderCircle } from "lucide-
 import { api } from "@/lib/api";
 import { useLang } from "@/lib/i18n";
 
-type Preferences = { lowStock: boolean; debtDue: boolean; subscriptionExpiry: boolean; dailyAssistant: boolean };
+type Preferences = { lowStock: boolean; debtDue: boolean; subscriptionExpiry: boolean; dailyAssistant: boolean; privatePreview: boolean };
 type Notice = { tone: "success" | "error" | "info"; text: string };
 const DEVICE_ID_KEY = "dukapilot_push_device_id";
 
@@ -137,6 +137,7 @@ export default function NotificationSettings({ owner }: { owner: boolean }) {
     ["debtDue", "Debt due", "Madeni yanayodaiwa"],
     ["subscriptionExpiry", "Plan expiry", "Mpango unaisha"],
     ["dailyAssistant", "Daily AI priority", "Kipaumbele cha AI kila siku"],
+    ["privatePreview", "Hide details on lock screen", "Ficha maelezo kwenye lock screen"],
   ];
 
   return (

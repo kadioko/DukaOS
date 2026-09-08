@@ -131,8 +131,11 @@ const adminListSubscriptions = asyncHandler(async (req, res) => {
   const selectedStatus = ["trial", "active", "expired", "suspended"].includes(status) ? status : null;
   const pageWhere = withSubscriptionStatus(baseWhere, selectedStatus, now);
   const statusNames = ["trial", "active", "expired", "suspended"];
-  const [total, ...statusCounts] = await Promise.all([
+  const [total, expiringTrials, stalledTrials, activatedTrials, ...statusCounts] = await Promise.all([
     prisma.shop.count({ where: pageWhere }),
+    prisma.shop.count({ where: { parentShopId: null, isActive: true, plan: "FREE_TRIAL", trialEndsAt: { gt: now, lte: new Date(now.getTime() + 3 * 86400000) } } }),
+    prisma.shop.count({ where: { parentShopId: null, isActive: true, plan: "FREE_TRIAL", trialEndsAt: { gt: now }, onboardingStatus: { in: ["NEW", "CONTACTED", "NEEDS_HELP"] } } }),
+    prisma.shop.count({ where: { parentShopId: null, isActive: true, plan: "FREE_TRIAL", trialEndsAt: { gt: now }, onboardingStatus: { in: ["SETUP_DONE", "ACTIVATED", "PAID", "CONVERTED"] } } }),
     ...statusNames.map((name) => prisma.shop.count({ where: withSubscriptionStatus(baseWhere, name, now) })),
   ]);
   const totalPages = Math.max(1, Math.ceil(total / limit));
@@ -167,7 +170,28 @@ const adminListSubscriptions = asyncHandler(async (req, res) => {
     skip: (page - 1) * limit,
   });
 
-  const shopIds = shops.map((s) => s.id);
+  const supportShops = await prisma.shop.findMany({
+    where: {
+      parentShopId: null,
+      OR: [
+        { isActive: false },
+        { onboardingStatus: { in: ["NEEDS_HELP", "CHURN_RISK"] } },
+        { isActive: true, plan: "FREE_TRIAL", trialEndsAt: { lte: new Date(now.getTime() + 3 * 86400000) } },
+        { AND: [subscriptionStatusWhere("expired", now)] },
+      ],
+    },
+    select: {
+      id: true, name: true, plan: true, trialEndsAt: true, subscriptionEndsAt: true, isActive: true,
+      onboardingStatus: true, additionalBranchSlots: true, lastContactedAt: true, followUpNotes: true, createdAt: true,
+      user: { select: { id: true, name: true, phone: true } },
+      subscriptionPayments: { orderBy: { paidAt: "desc" }, take: 1 },
+      _count: { select: { products: { where: { isActive: true } }, sales: { where: { status: "COMPLETED" } }, orders: true } },
+    },
+    orderBy: { updatedAt: "asc" },
+    take: 60,
+  });
+
+  const shopIds = Array.from(new Set([...shops, ...supportShops].map((s) => s.id)));
   const secondDaySaleRows = shopIds.length
     ? await prisma.sale.groupBy({
         by: ["shopId"],
@@ -182,7 +206,7 @@ const adminListSubscriptions = asyncHandler(async (req, res) => {
   const saleSpanByShop = new Map(secondDaySaleRows.map((row) => [row.shopId, row]));
 
   // Compute status for each
-  const enriched = shops.map((s) => {
+  const enrichShop = (s) => {
     const snapshot = subscriptionSnapshot(s, now);
     const saleSpan = saleSpanByShop.get(s.id);
     const firstSaleAt = saleSpan?._min.createdAt || null;
@@ -196,7 +220,9 @@ const adminListSubscriptions = asyncHandler(async (req, res) => {
       activated: s._count.products >= 10 && s._count.sales >= 10 && secondDayReturn,
     };
     return { ...s, ...snapshot, lastPayment: s.subscriptionPayments[0] || null, activation };
-  });
+  };
+  const enriched = shops.map(enrichShop);
+  const supportQueue = supportShops.map(enrichShop);
 
   res.json({
     shops: enriched,
@@ -205,6 +231,8 @@ const adminListSubscriptions = asyncHandler(async (req, res) => {
     limit,
     totalPages,
     statusCounts: Object.fromEntries(statusNames.map((name, index) => [name, statusCounts[index]])),
+    operationalCounts: { expiringTrials, stalledTrials, activatedTrials },
+    supportQueue,
   });
 });
 

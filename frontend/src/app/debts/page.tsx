@@ -39,6 +39,7 @@ export default function DebtsPage() {
   const [summary, setSummary] = useState({ openCount: 0, totalOwed: 0 });
   const [form, setForm] = useState({ customerName: "", customerPhone: "", amount: "", dueDate: "", note: "" });
   const [paymentDrafts, setPaymentDrafts] = useState<Record<string, string>>({});
+  const [paymentRequestKeys, setPaymentRequestKeys] = useState<Record<string, string>>({});
   const [assistantPrefill, setAssistantPrefill] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -95,9 +96,23 @@ export default function DebtsPage() {
 
   async function recordPayment(debt: Debt, amount: number) {
     if (!Number.isFinite(amount) || amount <= 0) return;
-    await api.post(`/debts/${debt.id}/payments`, { amount }, lang);
-    setPaymentDrafts((prev) => ({ ...prev, [debt.id]: "" }));
-    await load();
+    const requestKey = paymentRequestKeys[debt.id] || crypto.randomUUID();
+    if (!paymentRequestKeys[debt.id]) {
+      setPaymentRequestKeys((prev) => ({ ...prev, [debt.id]: requestKey }));
+    }
+    try {
+      await api.post(`/debts/${debt.id}/payments`, { amount, requestKey }, lang);
+      setPaymentDrafts((prev) => ({ ...prev, [debt.id]: "" }));
+      setPaymentRequestKeys((prev) => {
+        const next = { ...prev };
+        delete next[debt.id];
+        return next;
+      });
+      await load();
+    } catch (error) {
+      // Preserve the key after a timeout so a retry returns the same receipt.
+      throw error;
+    }
   }
 
   async function deleteDebt(debt: Debt) {
@@ -189,7 +204,15 @@ export default function DebtsPage() {
                   <div className="grid gap-2 sm:grid-cols-[1fr_auto_auto]">
                     <input
                       value={paymentDrafts[debt.id] || ""}
-                      onChange={(e) => setPaymentDrafts((prev) => ({ ...prev, [debt.id]: e.target.value }))}
+                      onChange={(e) => {
+                        setPaymentDrafts((prev) => ({ ...prev, [debt.id]: e.target.value }));
+                        setPaymentRequestKeys((prev) => {
+                          if (!prev[debt.id]) return prev;
+                          const next = { ...prev };
+                          delete next[debt.id];
+                          return next;
+                        });
+                      }}
                       type="number"
                       min="1"
                       max={balance}

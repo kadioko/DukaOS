@@ -48,7 +48,7 @@ test("admin support access reactivates an expired shop on a paid plan", async ()
 });
 
 test("admin subscription list searches in the database and returns a bounded page with status counts", async () => {
-  const countResults = [43, 7, 19, 14, 3];
+  const countResults = [43, 2, 4, 3, 7, 19, 14, 3];
   let findManyArgs;
   require.cache[prismaPath] = {
     id: prismaPath,
@@ -58,7 +58,7 @@ test("admin subscription list searches in the database and returns a bounded pag
       shop: {
         count: async () => countResults.shift(),
         findMany: async (args) => {
-          findManyArgs = args;
+          if (args.skip !== undefined) findManyArgs = args;
           return [];
         },
       },
@@ -78,6 +78,8 @@ test("admin subscription list searches in the database and returns a bounded pag
   assert.equal(findManyArgs.skip, 20);
   assert.deepEqual(res.payload, {
     shops: [],
+    supportQueue: [],
+    operationalCounts: { expiringTrials: 2, stalledTrials: 4, activatedTrials: 3 },
     total: 43,
     page: 2,
     limit: 20,

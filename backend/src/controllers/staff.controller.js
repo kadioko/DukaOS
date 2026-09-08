@@ -180,6 +180,7 @@ const update = asyncHandler(async (req, res) => {
       name: req.body.name === undefined ? existing.name : String(req.body.name || "").trim(),
       phone: req.body.phone === undefined ? existing.phone : nextPhone || null,
       ...(pin !== undefined ? { pin: pin ? await bcrypt.hash(pin, 10) : null } : {}),
+      ...(pin !== undefined ? { sessionVersion: { increment: 1 } } : {}),
       role,
       canSell: boolValue(req.body.canSell, existing.canSell),
       canManageStock: boolValue(req.body.canManageStock, existing.canManageStock),

@@ -12,13 +12,13 @@ export default function DeleteAccountPage() {
         "Tuma ombi lako kupitia support@dukapilot.com au WhatsApp +255 743 910 580.",
         "Tumia nambari ya simu ya akaunti yako ya DukaPilot na jina la duka ili tukuthibitishe.",
         "Andika kama unataka kufuta akaunti yote, duka lote, au sehemu fulani ya data.",
-        "Tutathibitisha ombi na kukamilisha ufutaji ndani ya siku 30, isipokuwa data inayotakiwa kuhifadhiwa kisheria au kwa usalama.",
+        "Tutathibitisha ombi na kukamilisha ufutaji au kuondoa kabisa utambulisho ndani ya siku 30, isipokuwa data inayotakiwa kuhifadhiwa kisheria au kwa usalama.",
       ]
     : [
         "Send your request to support@dukapilot.com or WhatsApp +255 743 910 580.",
         "Include the phone number on your DukaPilot account and your shop name so we can verify you.",
         "Tell us whether you want the full account deleted, the full shop deleted, or only certain data deleted.",
-        "We will verify the request and complete deletion within 30 days, except for data we must keep for legal, security, or fraud-prevention reasons.",
+        "We will verify the request and complete deletion or irreversible anonymization within 30 days, except for data we must keep for legal, security, or fraud-prevention reasons.",
       ];
 
   const deletedData = lang === "sw"
@@ -90,7 +90,7 @@ export default function DeleteAccountPage() {
           </div>
 
           <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-            <h2 className="text-lg font-bold text-gray-950">{lang === "sw" ? "Data inayofutwa" : "Data deleted"}</h2>
+            <h2 className="text-lg font-bold text-gray-950">{lang === "sw" ? "Data inayofutwa au kuondolewa utambulisho" : "Data deleted or irreversibly anonymized"}</h2>
             <ul className="mt-4 space-y-3">
               {deletedData.map((item) => (
                 <li key={item} className="flex gap-3 text-sm leading-6 text-gray-600">

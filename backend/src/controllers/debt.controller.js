@@ -119,21 +119,41 @@ const create = asyncHandler(async (req, res) => {
   res.status(201).json({ debt });
 });
 
+function paymentRequestKey(value) {
+  const key = String(value || "").trim();
+  return /^[a-f0-9-]{16,80}$/i.test(key) ? key : null;
+}
+
 const recordPayment = asyncHandler(async (req, res) => {
   const shopId = await getShopIdForUser(req.user);
   const amount = Number(req.body.amount);
   const paymentMethod = String(req.body.paymentMethod || "CASH").toUpperCase();
   const paymentRef = String(req.body.paymentRef || "").trim() || null;
   const note = String(req.body.note || "").trim() || null;
+  const requestKey = req.body.requestKey === undefined ? null : paymentRequestKey(req.body.requestKey);
 
   if (!Number.isInteger(amount) || amount <= 0) {
     return res.status(400).json({ error: "Payment amount must be a whole positive TZS amount" });
   }
   if (!PAYMENT_METHODS.has(paymentMethod)) return res.status(400).json({ error: "Invalid payment method" });
+  if (req.body.requestKey !== undefined && !requestKey) return res.status(400).json({ error: "Invalid payment retry key" });
 
-  const updated = await prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx) => {
     const debt = await tx.debt.findFirst({ where: { id: req.params.id, shopId } });
     if (!debt) throw Object.assign(new Error("Debt not found"), { status: 404 });
+
+    if (requestKey) {
+      const existingPayment = await tx.debtPayment.findFirst({ where: { debtId: debt.id, requestKey } });
+      if (existingPayment) {
+        if (existingPayment.amount !== amount
+          || existingPayment.paymentMethod !== paymentMethod
+          || (existingPayment.paymentRef || null) !== paymentRef) {
+          throw Object.assign(new Error("This payment retry key was already used with different payment details"), { status: 409 });
+        }
+        const current = await tx.debt.findUnique({ where: { id: debt.id }, include: { payments: { orderBy: { createdAt: "desc" }, take: 10 } } });
+        return { debt: current, reused: true };
+      }
+    }
     if (["PAID", "CANCELLED"].includes(debt.status)) {
       throw Object.assign(new Error("This debt can no longer receive payments"), { status: 400 });
     }
@@ -152,16 +172,17 @@ const recordPayment = asyncHandler(async (req, res) => {
 
     const cashSession = paymentMethod === "CASH" ? await findOpenCashSession(tx, shopId, req.user) : null;
     await tx.debtPayment.create({
-      data: { debtId: debt.id, amount, paymentMethod, paymentRef, note, recordedBy: req.user.staffId || req.user.userId, cashSessionId: cashSession?.id || null },
+      data: { debtId: debt.id, amount, paymentMethod, paymentRef, note, requestKey, recordedBy: req.user.staffId || req.user.userId, cashSessionId: cashSession?.id || null },
     });
-    return tx.debt.findUnique({
+    const current = await tx.debt.findUnique({
       where: { id: debt.id },
       include: { payments: { orderBy: { createdAt: "desc" }, take: 10 } },
     });
+    return { debt: current, reused: false };
   });
 
-  req.audit = { action: "debt.payment", resourceType: "debt", resourceId: updated.id, metadata: { amount, paymentMethod, paymentRef } };
-  res.json({ debt: updated });
+  req.audit = { action: "debt.payment", resourceType: "debt", resourceId: result.debt.id, metadata: { amount, paymentMethod, paymentRef, reused: result.reused } };
+  res.json(result);
 });
 
 const update = asyncHandler(async (req, res) => {
@@ -180,12 +201,12 @@ const update = asyncHandler(async (req, res) => {
   const customerPhone = req.body.customerPhone === undefined ? debt.customerPhone : normalizePhone(req.body.customerPhone);
   if (!customerPhone) return res.status(400).json({ error: "Customer phone is required" });
 
-  const status = req.body.status && ["OPEN", "PARTIAL", "PAID", "CANCELLED"].includes(String(req.body.status).toUpperCase())
-    ? String(req.body.status).toUpperCase()
-    : nextStatus(amount, debt.amountPaid);
+  // Payment status is derived from the durable ledger total. An edit must never
+  // mark an unpaid record as paid or overwrite a payment recorded concurrently.
+  const status = nextStatus(amount, debt.amountPaid);
 
-  const updated = await prisma.debt.update({
-    where: { id: debt.id },
+  const updated = await prisma.debt.updateMany({
+    where: { id: debt.id, shopId, amountPaid: debt.amountPaid, status: debt.status },
     data: {
       customerName: req.body.customerName === undefined ? debt.customerName : String(req.body.customerName || "").trim() || null,
       customerPhone,
@@ -195,11 +216,17 @@ const update = asyncHandler(async (req, res) => {
       dueDate: req.body.dueDate === undefined ? debt.dueDate : req.body.dueDate ? new Date(req.body.dueDate) : null,
       note: req.body.note === undefined ? debt.note : String(req.body.note || "").trim() || null,
     },
+  });
+  if (updated.count !== 1) {
+    return res.status(409).json({ error: "Debt changed before this edit was saved. Refresh and try again." });
+  }
+  const current = await prisma.debt.findUnique({
+    where: { id: debt.id },
     include: { payments: { orderBy: { createdAt: "desc" }, take: 10 } },
   });
 
   req.audit = { action: "debt.update", resourceType: "debt", resourceId: debt.id };
-  res.json({ debt: updated });
+  res.json({ debt: current });
 });
 
 const remove = asyncHandler(async (req, res) => {

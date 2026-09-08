@@ -16,6 +16,7 @@ const { subscriptionPaymentLimiter } = require("../middleware/rateLimit");
 router.get("/checkout", authenticate, checkout.ownerOnly, subscriptionPaymentLimiter, checkout.getCheckoutConfig);
 router.post("/checkout", authenticate, checkout.ownerOnly, subscriptionPaymentLimiter, checkout.createCheckout);
 router.post("/checkout/:id/check", authenticate, checkout.ownerOnly, subscriptionPaymentLimiter, checkout.checkCheckout);
+router.post("/checkout/:id/retry", authenticate, checkout.ownerOnly, subscriptionPaymentLimiter, checkout.retryCheckout);
 
 // Merchant: check own subscription
 router.get("/status", authenticate, getStatus);
@@ -30,6 +31,8 @@ router.get("/quote", authenticate, checkout.ownerOnly, async (req, res, next) =>
 
 // Admin routes
 router.get("/admin", authenticate, requireRole("ADMIN"), adminListSubscriptions);
+router.get("/admin-checkouts/review", authenticate, requireRole("ADMIN"), checkout.adminListExceptions);
+router.post("/admin-checkouts/:id/retry", authenticate, requireRole("ADMIN"), subscriptionPaymentLimiter, checkout.adminRetryException);
 router.use("/admin/:shopId", authenticate, requireRole("ADMIN"), async (req, res, next) => {
   try {
     const shop = await require("../lib/prisma").shop.findUnique({ where: { id: req.params.shopId }, select: { parentShopId: true } });

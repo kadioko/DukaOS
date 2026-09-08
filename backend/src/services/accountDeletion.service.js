@@ -1,0 +1,76 @@
+const crypto = require("node:crypto");
+const bcrypt = require("bcryptjs");
+const { Prisma } = require("@prisma/client");
+const prisma = require("../lib/prisma");
+
+async function anonymizeMerchantAccount(userId) {
+  const disabledPin = await bcrypt.hash(crypto.randomBytes(32).toString("hex"), 10);
+  return prisma.$transaction(async (tx) => {
+    const user = await tx.user.findUnique({
+      where: { id: userId },
+      include: { shop: { select: { id: true } }, supplier: { select: { id: true } } },
+    });
+    if (!user?.shop) throw Object.assign(new Error("Merchant shop not found"), { status: 404 });
+    const rootId = user.shop.id;
+    const shops = await tx.shop.findMany({ where: { OR: [{ id: rootId }, { parentShopId: rootId }] }, select: { id: true } });
+    const shopIds = shops.map((shop) => shop.id);
+
+    // Remove device and behavioural records entirely before de-identifying the
+    // accounting records that must remain internally consistent.
+    await tx.pushDelivery.deleteMany({ where: { shopId: { in: shopIds } } });
+    await tx.pushSubscription.deleteMany({ where: { shopId: { in: shopIds } } });
+    await tx.notificationPreference.deleteMany({ where: { shopId: { in: shopIds } } });
+    await tx.appUsageEvent.deleteMany({ where: { shopId: { in: shopIds } } });
+    await tx.offlineSyncEvent.deleteMany({ where: { shopId: { in: shopIds } } });
+    await tx.assistantAction.deleteMany({ where: { shopId: { in: shopIds } } });
+
+    await tx.staffMember.updateMany({
+      where: { shopId: { in: shopIds } },
+      data: { name: "Deleted staff", phone: null, pin: null, isActive: false, sessionVersion: { increment: 1 } },
+    });
+    await tx.customer.updateMany({ where: { shopId: { in: shopIds } }, data: { name: "Deleted customer", phone: null, email: null, address: null, notes: null } });
+    await tx.sale.updateMany({ where: { shopId: { in: shopIds } }, data: { customerName: null, customerPhone: null, note: null } });
+    await tx.saleItem.updateMany({ where: { sale: { shopId: { in: shopIds } } }, data: { name: null, description: null } });
+    await tx.debt.updateMany({ where: { shopId: { in: shopIds } }, data: { customerName: null, customerPhone: "deleted", note: null } });
+    await tx.debtPayment.updateMany({ where: { debt: { shopId: { in: shopIds } } }, data: { note: null } });
+    await tx.customerOrder.updateMany({ where: { shopId: { in: shopIds } }, data: { customerName: "Deleted customer", customerPhone: "deleted", note: null } });
+    await tx.product.updateMany({ where: { shopId: { in: shopIds } }, data: { name: "Deleted product", sku: null, barcode: null, supplierId: null, supplierCatalogProductId: null, isActive: false } });
+    await tx.service.updateMany({ where: { shopId: { in: shopIds } }, data: { name: "Deleted service", description: null, isActive: false } });
+    await tx.expense.updateMany({ where: { shopId: { in: shopIds } }, data: { title: "Deleted expense", vendor: null, note: null } });
+    await tx.recurringExpense.updateMany({ where: { shopId: { in: shopIds } }, data: { title: "Deleted recurring expense", vendor: null, note: null, isActive: false } });
+    await tx.order.updateMany({ where: { shopId: { in: shopIds } }, data: { note: null } });
+    await tx.stockReceipt.updateMany({ where: { shopId: { in: shopIds } }, data: { invoiceNumber: null, note: null, receivedBy: null } });
+    await tx.cashSession.updateMany({ where: { shopId: { in: shopIds } }, data: { openedByName: "Deleted staff", note: null } });
+    await tx.quotationShare.deleteMany({ where: { quotation: { shopId: { in: shopIds } } } });
+    await tx.quotationRevision.deleteMany({ where: { quotation: { shopId: { in: shopIds } } } });
+    await tx.quotation.updateMany({
+      where: { shopId: { in: shopIds } },
+      data: {
+        projectTitle: "Deleted quotation", projectType: null, scopeOfWork: null,
+        customerNote: null, internalNote: null, termsAndConditions: null, paymentTerms: null,
+        acceptedByName: null, acceptanceComment: null, acceptanceSignature: null,
+        rejectionReason: null, cancellationReason: null,
+      },
+    });
+    await tx.quotationItem.updateMany({ where: { quotation: { shopId: { in: shopIds } } }, data: { description: null, internalNote: null } });
+    await tx.report.updateMany({ where: { userId }, data: { title: "Deleted support report", description: "Account deleted", adminNotes: null } });
+    await tx.auditLog.updateMany({ where: { userId }, data: { ipAddress: null, userAgent: null, metadata: Prisma.DbNull } });
+    await tx.shop.updateMany({
+      where: { id: { in: shopIds } },
+      data: { name: "Deleted business", location: "Deleted", district: null, isActive: false, isCatalogPublished: false, followUpNotes: null, lastContactedAt: null },
+    });
+    if (user.supplier) {
+      await tx.supplierCatalogProduct.updateMany({ where: { supplierId: user.supplier.id }, data: { name: "Deleted supplier product", sku: null, note: null, isAvailable: false } });
+      await tx.supplier.update({ where: { id: user.supplier.id }, data: { name: "Deleted supplier", phone: `deleted-${user.supplier.id}`, address: null, verificationStatus: "REJECTED", verifiedAt: null, adminNotes: null, createdByShopId: null, userId: null } });
+    }
+    await tx.shop.update({ where: { id: rootId }, data: { userId: null } });
+    const account = await tx.user.update({
+      where: { id: userId },
+      data: { phone: `deleted-${userId}@dukapilot.invalid`, name: "Deleted account", pin: disabledPin, sessionVersion: { increment: 1 } },
+      select: { id: true },
+    });
+    return { account, rootId, shopIds };
+  });
+}
+
+module.exports = { anonymizeMerchantAccount };
